@@ -182,7 +182,21 @@ def trimBytes(bs):
     return bs
 
 
-class DirEntry(object):
+class HashableEntry(object):
+    """ A common hash function for directory and file entries """
+
+    def getHash(self):
+        hash = self.parentIndex ^ 0x091A2B3C
+        for i in range(4):
+            hash = ((hash >> 1) | (hash << 31)) & 0xFFFFFFFF
+            hash ^= self.name[i * 4]
+            hash ^= self.name[i * 4 + 1] << 8
+            hash ^= self.name[i * 4 + 2] << 16
+            hash ^= self.name[i * 4 + 3] << 24
+        return hash
+
+
+class DirEntry(HashableEntry):
     """ Directory table entry """
 
     def __init__(self, raw):
@@ -203,7 +217,7 @@ class DirEntry(object):
         return trimBytes(self.name).decode()
 
 
-class FileEntry(object):
+class FileEntry(HashableEntry):
     """ File table entry """
 
     def __init__(self, raw):
@@ -361,12 +375,12 @@ def main():
     dirHashTable = []
     for i in range(dirHashTableSize):
         dirHashTable.append(struct.unpack('<I', saveImage[
-            dirHashTableOff + i * 4:dirHashTableOff + (i + 1) * 4]))
+            dirHashTableOff + i * 4:dirHashTableOff + (i + 1) * 4])[0])
 
     fileHashTable = []
     for i in range(fileHashTableSize):
         fileHashTable.append(struct.unpack('<I', saveImage[
-            fileHashTableOff + i * 4:fileHashTableOff + (i + 1) * 4]))
+            fileHashTableOff + i * 4:fileHashTableOff + (i + 1) * 4])[0])
 
     if not hasData:
         dataRegion = saveImage[dataRegionOff: dataRegionOff +
@@ -433,6 +447,22 @@ def main():
                       fileList[i].nextIndex, fileList[i].nextCollision,
                       fileList[i].size, fileList[i].blockIndex,
                       fileList[i].u1, fileList[i].u2))
+
+    # Verifies directory hash table
+    for i in range(dirHashTableSize):
+        current = dirHashTable[i]
+        while current != 0:
+            if dirList[current].getHash() % dirHashTableSize != i:
+                print("Warning: directory wrong bucket")
+            current = dirList[current].nextCollision
+
+    # Verifies file hash table
+    for i in range(fileHashTableSize):
+        current = fileHashTable[i]
+        while current != 0:
+            if fileList[current].getHash() % fileHashTableSize != i:
+                print("Warning: file wrong bucket")
+            current = fileList[current].nextCollision
 
     # Parses FAT
     fatList = []

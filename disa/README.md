@@ -269,10 +269,26 @@ Like directory entry table, file entry table also has some dummy entries:
 The 0-th entry of the array is always a dummy entry, which functions as the head of the dummy entry linked list. There for maximum entry count is one more than maximum file count. Dummy entries are probably left there when deleting files, and reserved for future use.
 
 ### Directory Hash Table & File Hash Table
-(This section is in theory and unconfirmed)
-This is a u32 array of size = bucket count, each of which is an index to the directory/file entry table. The directory/file path is hashed (_TODO: how?_) and its index is put to the corresponding bucket. if there is already a directory/file entry in the bucket, then it appends to the linked list formed by `Index of the next directory/file in the same hash table bucket` field in the directory/file entry table.
+This is a u32 array of size = bucket count, each of which is an index to the directory/file entry table. The directory/file name is hashed and its entry index is put to the corresponding bucket. If there is already a directory/file entry in the bucket, then it appends to the linked list formed by `Index of the next directory/file in the same hash table bucket` field in the directory/file entry table.
 
-Reference: RomFS hash table
+The hash function is
+```
+uint32_t GetBucket(
+    char name[16], // takes all 16 bytes including trailing zeros
+    uint32_t parent_dir_index,
+    uint32_t bucket_count
+) {
+    uint32_t hash = parent_dir_index ^ 0x091A2B3C;
+    for (int i = 0; i < 4; ++i) {
+        hash = (hash >> 1) | (hash << 31);
+        hash ^= (uint32_t)name[i * 4]
+        hash ^= (uint32_t)name[i * 4 + 1] << 8
+        hash ^= (uint32_t)name[i * 4 + 2] << 16
+        hash ^= (uint32_t)name[i * 4 + 3] << 24
+    }
+    return hash % bucket_count;
+}
+```
 
 ### File Allocation Table
 The file allocation table is an array of the following 8-byte entry. The array size is actually one more than the size recorded in the SAVE header. Each entry corresponds to a block in the data region (the block size is defined in SAVE header). However, the 0th entry seems to corresponds to nothing, so the corresponding block index is off by one. e.g. entry 31 in this table corresponds to block 30 in the data region.
