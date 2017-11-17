@@ -1,3 +1,5 @@
+# Python 3
+
 import os
 import os.path
 import struct
