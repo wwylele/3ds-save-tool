@@ -167,7 +167,7 @@ Effectively, the active data is scattered among the two level 3 chunk. One can a
 ### IVFC tree
 The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
 
-However, not all data are hashed - only ranges that have been written with valid data are properly hashed. It is even observed that one file in the filesystem (will be introduced later) can have part of its data unhashed. An unconfirmed theory is that this happens when a file is create with a large size, but only part of the data is filled by File:Write, and FS will refuse to read the unwritten (unhashed) part.
+However, not all data are hashed - only ranges that have been written with valid data are properly hashed. It is even observed that one file in the filesystem (will be introduced later) can have part of its data unhashed. This happens when a file is create with a large size, but only part of the data is filled by File:Write, and FS will refuse to read the unwritten (unhashed) part, returning verification failure error. (This probably needs more test to confirm)
 
 Level 4 is the actual core of the partition. It is either the SAVE image for a SAVE partition, or a DATA image for a DATA partition.
 
