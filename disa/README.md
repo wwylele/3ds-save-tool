@@ -6,7 +6,6 @@ This documentation describes the format description for 3DS normal save containe
 However, this documentation only describe plaintext DISA format and its content. Any encryption layer on top of it, such as cartridge save encryption, SD file encryption, or NAND partition encryption, is not covered.
 
 ## General Rule
- - All hashes are SHA-256
  - All fields are little-endian
 
 ## Overview of a Save file
@@ -45,7 +44,7 @@ The DISA header is located at 0x100 in the save file image.
 |0x60|8|DATA partition size|
 |0x68|1|Active table, 0 = primary, 1 = secondary|
 |0x69|3|Unknown.|
-|0x6C|0x20|Hash over the active table|
+|0x6C|0x20|SHA-256 over the active table|
 |0x8C|0x74|Unused, might contain leftover data|
 
 This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header is relative to the beginning of the file.
@@ -127,7 +126,7 @@ This header defines each level of IVFC tree (will explain below). All the offset
 This header defines each level of DPFS tree (will explain below). All the offsets are relative to the beginning of the partition.
 
 ### DIFI Hash
-This is the hash over IVFC level 1, padded to level 1 block size. After the hash, there is additional unused 4 bytes. This 4 bytes are 0xFFFFFFFF in ciphertext.
+This is SHA-256 hash over IVFC level 1, padded to level 1 block size. After the hash, there is additional unused 4 bytes. This 4 bytes are 0xFFFFFFFF in ciphertext.
 
 ## Partition
 The SAVE partition and the DATA partition has slightly different structures.
@@ -165,7 +164,7 @@ and one want to read byte at 0x1234567 of level 3, the following calculation is 
 Effectively, the active data is scattered among the two level 3 chunk. One can assemble the whole active level 3 image following the same rule.
 
 ### IVFC tree
-The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
+The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of SHA-256 hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
 
 However, not all data are hashed - only ranges that have been written with valid data are properly hashed. It is even observed that one file in the filesystem (will be introduced later) can have part of its data unhashed. This happens when a file is create with a large size, but only part of the data is filled by File:Write, and FS will refuse to read the unwritten (unhashed) part, returning verification failure error. (This probably needs more test to confirm)
 
