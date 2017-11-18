@@ -101,7 +101,7 @@ This header defines the rest components of the partition (IVFC descriptor, DPFS 
 |0x58|8|IVFC level 4 offset (unused for DATA partition?)|
 |0x60|8|IVFC level 4 size|
 |0x68|8|IVFC level 4 block size in log2|
-|0x70|8|Unknown, usually 0x78|
+|0x70|8|IVFC descriptor size? usually 0x78|
 
 This header defines each level of IVFC tree (will explain below). All the offsets are relative to the beginning of DPFS level 3.
 
