@@ -257,12 +257,17 @@ class FatEntry(object):
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: %s [DISA file] [output dir]" % sys.argv[0])
+    if len(sys.argv) < 2:
+        print("Usage: %s [DISA file] <output dir>" % sys.argv[0])
         exit(1)
 
     disa = open(sys.argv[1], 'rb')
-    output_dir = sys.argv[2]
+
+    if len(sys.argv) > 2:
+        output_dir = sys.argv[2]
+    else:
+        output_dir = None
+        print("No output directory given. Will only do data checking.")
 
     # Reads DISA header
     disa.seek(0x100, os.SEEK_SET)
@@ -416,6 +421,7 @@ def main():
     for i in range(1, dirCount):
         dirList.append(DirEntry(dirTable[i * 0x28: (i + 1) * 0x28]))
 
+    print("Directory list:")
     for i in range(len(dirList)):
         if dirList[i].count == dirCount:
             print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
@@ -435,6 +441,7 @@ def main():
     for i in range(1, fileCount):
         fileList.append(FileEntry(fileTable[i * 0x30: (i + 1) * 0x30]))
 
+    print("File list:")
     for i in range(len(fileList)):
         if fileList[i].count == fileCount:
             print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
@@ -471,9 +478,10 @@ def main():
             FatEntry(saveImage[fatOff + i * 8: fatOff + (i + 1) * 8]))
 
     def ExtractDir(i, parent):
-        dir = os.path.join(output_dir, parent, dirList[i].getName())
-        if not os.path.isdir(dir):
-            os.mkdir(dir)
+        if output_dir is not None:
+            dir = os.path.join(output_dir, parent, dirList[i].getName())
+            if not os.path.isdir(dir):
+                os.mkdir(dir)
 
         # Extracts subdirectories
         if dirList[i].firstDirIndex != 0:
@@ -491,7 +499,10 @@ def main():
 
     def ExtractFile(i, parent):
         full_name = os.path.join(parent, fileList[i].getName())
-        file = open(os.path.join(output_dir, full_name), 'wb')
+        if output_dir is not None:
+            file = open(os.path.join(output_dir, full_name), 'wb')
+        else:
+            file = None
         fileSize = fileList[i].size
         if fileSize != 0:
             currentBlock = fileList[i].blockIndex
@@ -511,7 +522,8 @@ def main():
                 tranSize *= blockSize
                 tranSize = min(fileSize, tranSize)
                 pos = currentBlock * blockSize
-                file.write(dataRegion[pos: pos + tranSize])
+                if file is not None:
+                    file.write(dataRegion[pos: pos + tranSize])
                 fileSize -= tranSize
                 if fileSize <= 0:
                     if fatList[currentBlock].v != -1:
@@ -520,7 +532,8 @@ def main():
                 previousBlock = currentBlock
                 currentBlock = fatList[currentBlock].v
 
-        file.close()
+        if file is not None:
+            file.close()
 
         # Extract sibling files
         if fileList[i].nextIndex != 0:
