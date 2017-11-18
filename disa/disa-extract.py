@@ -541,6 +541,7 @@ def main():
 
     # Extracts ALL
     ExtractDir(1, "")
+    print("Finished!")
 
 
 if __name__ == "__main__":
