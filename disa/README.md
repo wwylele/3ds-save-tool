@@ -7,6 +7,7 @@ However, this documentation only describe plaintext DISA format and its content.
 
 ## General Rule
  - All fields are little-endian
+ - " :thinking: " is put next to unfinished/unconfirmed thing
 
 ## Overview of a Save file
 A save file consists of the following components
@@ -21,7 +22,7 @@ Note:
  - There are two type of saves: with or without the DATA partition. The type is decided by the parameter `duplicate data` when formating a save (`FS:FormatSaveData` or `CreateSystemSaveData`). When this parameter is 0 (`false`), the DATA partition presents. The implication of this second partition is explained in the following sections.
 
 ## AES CMAC Header
-_TODO_
+_TODO_ :thinking:
 
 ## DISA Header
 The DISA header is located at 0x100 in the save file image.
@@ -43,7 +44,7 @@ The DISA header is located at 0x100 in the save file image.
 |0x58|8|DATA partition offset|
 |0x60|8|DATA partition size|
 |0x68|1|Active table, 0 = primary, 1 = secondary|
-|0x69|3|Unknown.|
+|0x69|3|Unknown. :thinking:|
 |0x6C|0x20|SHA-256 over the active table|
 |0x8C|0x74|Unused, might contain leftover data|
 
@@ -77,7 +78,7 @@ The DIFI header locates at the beginning of a partition entry.
 |0x30|8|Partition has size|
 |0x38|1|When this byte is non-zero, this is a DATA partition, and the IVFC level 4 is located outside DPFS tree. See below|
 |0x39|1|DPFS tree level 1 selector|
-|0x3A|2|Unknown unused?|
+|0x3A|2|Unknown unused? :thinking:|
 |0x3C|8|(For DATA partition only) IVFC level 4 offset|
 
 This header defines the rest components of the partition (IVFC descriptor, DPFS descriptor and partition hash). All offsets are relative to the beginning of the partition entry, except for `IVFC level 4 offset`, which is related to the beginning of the (DATA) partition.
@@ -98,10 +99,10 @@ This header defines the rest components of the partition (IVFC descriptor, DPFS 
 |0x40|8|IVFC level 3 offset|
 |0x48|8|IVFC level 3 size|
 |0x50|8|IVFC level 3 block size in log2|
-|0x58|8|IVFC level 4 offset (unused for DATA partition?)|
+|0x58|8|IVFC level 4 offset (unused for DATA partition? :thinking:)|
 |0x60|8|IVFC level 4 size|
 |0x68|8|IVFC level 4 block size in log2|
-|0x70|8|IVFC descriptor size? usually 0x78|
+|0x70|8|IVFC descriptor size? usually 0x78 :thinking:|
 
 This header defines each level of IVFC tree (will explain below). All the offsets are relative to the beginning of DPFS level 3.
 
@@ -115,7 +116,7 @@ This header defines each level of IVFC tree (will explain below). All the offset
 |0x04|4|Magic 0x10000|
 |0x08|8|DPFS level 1 offset|
 |0x10|8|DPFS level 1 size|
-|0x18|8|DPFS level 1 block size in log2 (unused?)|
+|0x18|8|DPFS level 1 block size in log2 (unused? :thinking:)|
 |0x20|8|DPFS level 2 offset|
 |0x28|8|DPFS level 2 size|
 |0x30|8|DPFS level 2 block size in log2|
@@ -193,28 +194,28 @@ If the DATA image exists, data region is the whole DATA image; other wise, data 
 |0x08|8|0x20?|
 |0x10|8|Image size in blocks|
 |0x18|4/8?|Image block size|
-|0x1C|8|Unknown|
+|0x1C|8|Unknown:thinking:|
 |0x24|4|Data region block size|
 |0x28|8|Directory hash table offset|
 |0x30|4|Directory hash table bucket count|
-|0x34|4|Unknown|
+|0x34|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
 |0x38|8|File hash table offset|
 |0x40|4|File hash table bucket count|
-|0x44|4|Unknown|
+|0x44|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
 |0x48|8|File allocation table offset|
 |0x50|4|File allocation table entry count|
-|0x54|4|Unknown|
+|0x54|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
 |0x58|8|Data region offset (if no DATA image)|
 |0x60|4|Data region block count (= File allocation table entry count)|
-|0x64|4|Unknown|
+|0x64|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
 |0x68|8|If DATA exists: directory entry table offset;
 |||otherwise: u32 directory entry table starting block index + u32 directory entry table block count|
 |0x70|4|Maximum directory count|
-|0x74|4|Unknown|
+|0x74|4|Unknown:thinking:|
 |0x78|8|If DATA exists: file entry table offset;
 |||otherwise: u32 file entry table starting block index + u32 file entry table block count|
 |0x80|4|Maximum file count|
-|0x84|4|Unknown|
+|0x84|4|Unknown:thinking:|
 
  - All "offsets" are relative to the beginning of SAVE image. All "starting block index" are relative to the beginning of data region.
  - The file/directory bucket count & maximum count fields are the same as the arguments passed in when formating the save.
@@ -229,7 +230,7 @@ The directory entry table is an array of the following entry type. It describes 
 |0x14|4|Next sibling directory index. 0 if this is the last one|
 |0x18|4|First subdirectory index. 0 if not exists|
 |0x1C|4|First file index in file entry table. 0 if not exists|
-|0x20|4|0?|
+|0x20|4|0? :thinking:|
 |0x24|4|Index of the next directory in the same hash table bucket. 0 if this is the last one|
 
 There are also some dummy entries in the array:
@@ -251,10 +252,10 @@ The file entry table is an array of the following entry type. It contains inform
 |0x00|4|Parent directory index in directory entry table|
 |0x04|16|file name|
 |0x14|4|Next sibling file index. 0 if this is the last one|
-|0x18|4|Unknown. Timestamps?|
+|0x18|4|Unknown. Timestamps? :thinking:|
 |0x1C|4|First block index in data region. 0x80000000 if the file is just created and has no data.|
 |0x20|8|File Size|
-|0x28|4|Unknown. Sometimes 1, sometimes like timestamps|
+|0x28|4|Unknown. Sometimes 1, sometimes like timestamps :thinking:|
 |0x2C|4|Index of the next file in the same hash table bucket. 0 if this is the last one|
 
 Like directory entry table, file entry table also has some dummy entries:
