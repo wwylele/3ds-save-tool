@@ -173,6 +173,8 @@ def main():
         if not dataRegionIsData:
             print("Warning: DATA partition is not marked as DATA")
 
+    disa.close()
+
     # Reads SAVE header
     SAVE, ver, x20, imageSize, imageBlockSize, x00, blockSize, \
         dirHashTableOff, dirHashTableSize, dirHashTableUnk, \
