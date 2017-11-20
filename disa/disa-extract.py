@@ -7,88 +7,7 @@ import sys
 import hashlib
 
 import difi
-
-
-def trimBytes(bs):
-    """ Trims trailing zeros in a byte string """
-    n = bs.find(b'\0')
-    if n != -1:
-        return bs[:n]
-    return bs
-
-
-class HashableEntry(object):
-    """ A common hash function for directory and file entries """
-
-    def getHash(self):
-        hash = self.parentIndex ^ 0x091A2B3C
-        for i in range(4):
-            hash = ((hash >> 1) | (hash << 31)) & 0xFFFFFFFF
-            hash ^= self.name[i * 4]
-            hash ^= self.name[i * 4 + 1] << 8
-            hash ^= self.name[i * 4 + 2] << 16
-            hash ^= self.name[i * 4 + 3] << 24
-        return hash
-
-
-class DirEntry(HashableEntry):
-    """ Directory table entry """
-
-    def __init__(self, raw):
-        # Reads normal entry data
-        self.parentIndex, self.name, \
-            self.nextIndex, self.firstDirIndex, self.firstFileIndex, \
-            self.unknown, self.nextCollision \
-            = struct.unpack('<I16sIIIII', raw)
-
-        if self.unknown != 0:
-            print("Warning: unknown = %d" % unknown)
-
-        # Reads dummy entry data
-        self.count, self.maxCount, self.nextDummyIndex \
-            = struct.unpack('<II28xI', raw)
-
-    def getName(self):
-        return trimBytes(self.name).decode()
-
-
-class FileEntry(HashableEntry):
-    """ File table entry """
-
-    def __init__(self, raw):
-        # Reads normal entry data
-        self.parentIndex, self.name, \
-            self.nextIndex, self.u1, self.blockIndex, self.size, \
-            self.u2, self.nextCollision \
-            = struct.unpack('<I16sIIIQII', raw)
-
-        # Reads dummy entry data
-        self.count, self.maxCount, self.nextDummyIndex \
-            = struct.unpack('<II36xI', raw)
-
-    def getName(self):
-        return trimBytes(self.name).decode()
-
-
-class FatEntry(object):
-    """ FAT entry """
-
-    def __init__(self, raw):
-        self.u, self.v = struct.unpack('II', raw)
-        if self.u >= 0x80000000:
-            self.u -= 0x80000000
-            self.start = True
-        else:
-            self.start = False
-        if self.v >= 0x80000000:
-            self.v -= 0x80000000
-            self.expand = True
-        else:
-            self.expand = False
-
-        # shift index to match block index
-        self.u -= 1
-        self.v -= 1
+import savefilesystem
 
 
 def main():
@@ -176,12 +95,8 @@ def main():
     disa.close()
 
     # Reads SAVE header
-    SAVE, ver, x20, imageSize, imageBlockSize, x00, blockSize, \
-        dirHashTableOff, dirHashTableSize, dirHashTableUnk, \
-        fileHashTableOff, fileHashTableSize, fileHashTableUnk, \
-        fatOff, fatSize, fatUnk, \
-        dataRegionOff, dataRegionSize, dataRegionUnk, \
-        = struct.unpack('<IIQQIQIQIIQIIQIIQII', saveImage[0:0x68])
+    SAVE, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00 \
+        = struct.unpack('<IIQQII', saveImage[0:0x20])
 
     if SAVE != 0x45564153:
         print("Error: Wrong SAVE magic")
@@ -191,152 +106,57 @@ def main():
         print("Error: Wrong SAVE version")
         exit(1)
 
-    if x20 != 0x20:
-        print("Warning: unknown x20 = 0x%X" % x20)
-
     if x00 != 0:
-        print("Warning: unknown 0 = 0x%X" % x00)
+        print("Warning: unknown 0 = 0x%X in SAVE header" % x00)
 
-    print("Info: dirHashTableSize = %d" % dirHashTableSize)
-    print("Info: dirHashTableUnk = %d" % dirHashTableUnk)
-    print("Info: fileHashTableSize = %d" % fileHashTableSize)
-    print("Info: fileHashTableUnk = %d" % fileHashTableUnk)
-    print("Info: fatSize = %d" % fatSize)
-    print("Info: fatUnk = %d" % fatUnk)
-    print("Info: dataRegionSize = %d" % dataRegionSize)
-    print("Info: dataRegionUnk = %d" % dataRegionUnk)
-    if fatSize != dataRegionSize:
-        printf("Warning: fatSize != dataRegionSize")
-
-    dirHashTable = []
-    for i in range(dirHashTableSize):
-        dirHashTable.append(struct.unpack('<I', saveImage[
-            dirHashTableOff + i * 4:dirHashTableOff + (i + 1) * 4])[0])
-
-    fileHashTable = []
-    for i in range(fileHashTableSize):
-        fileHashTable.append(struct.unpack('<I', saveImage[
-            fileHashTableOff + i * 4:fileHashTableOff + (i + 1) * 4])[0])
+    fsHeader = savefilesystem.Header(
+        saveImage[filesystemHeaderOff:filesystemHeaderOff + 0x68], hasData)
 
     if not hasData:
-        dataRegion = saveImage[dataRegionOff: dataRegionOff +
-                               dataRegionSize * blockSize]
-        dirTableBlockIndex, dirTableBlockCount, dirMaxCount, dirUnk, \
-            fileTableBlockIndex, fileTableBlockCount, fileMaxCount, fileUnk \
-            = struct.unpack('<IIIIIIII', saveImage[0x68:0x88])
-        dirTableBlockIndex *= blockSize
-        dirTableBlockCount *= blockSize
-        fileTableBlockIndex *= blockSize
-        fileTableBlockCount *= blockSize
-        dirTable = dataRegion[dirTableBlockIndex: dirTableBlockIndex +
-                              dirTableBlockCount]
-        fileTable = dataRegion[fileTableBlockIndex:
-                               fileTableBlockIndex + fileTableBlockCount]
-    else:
-        dirTableOff, dirMaxCount, dirUnk, \
-            fileTableOff, fileMaxCount, fileUnk, \
-            = struct.unpack('<QIIQII', saveImage[0x68:0x88])
-        dirTable = saveImage[dirTableOff: dirTableOff +
-                             (dirMaxCount + 2) * 0x28]
-        fileTable = saveImage[fileTableOff: fileTableOff +
-                              (fileMaxCount + 1) * 0x30]
+        dataRegion = saveImage[
+            fsHeader.dataRegionOff: fsHeader.dataRegionOff +
+            fsHeader.dataRegionSize * fsHeader.blockSize]
 
-    print("Info: dirMaxCount = %d" % dirMaxCount)
-    print("Info: dirUnk = %d" % dirUnk)
-    print("Info: fileMaxCount = %d" % fileMaxCount)
-    print("Info: fileUnk = %d" % fileUnk)
+    # parse hash tables
+    dirHashTable = savefilesystem.getHashTable(fsHeader.dirHashTableOff,
+                                               fsHeader.dirHashTableSize,
+                                               saveImage)
 
-    # Parses directory entry table
-    dirList = [DirEntry(dirTable[0:0x28])]  # first (dummy) entry
-    dirCount = dirList[0].count
-    for i in range(1, dirCount):
-        dirList.append(DirEntry(dirTable[i * 0x28: (i + 1) * 0x28]))
+    fileHashTable = savefilesystem.getHashTable(fsHeader.fileHashTableOff,
+                                                fsHeader.fileHashTableSize,
+                                                saveImage)
+
+    # Parses directory & file entry table
+    dirList = savefilesystem.getDirList(
+        fsHeader.dirTableOff, saveImage)
 
     print("Directory list:")
     for i in range(len(dirList)):
-        if dirList[i].count == dirCount:
-            print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
-                i, dirList[i].count, dirList[i].maxCount,
-                dirList[i].nextDummyIndex))
-        else:
-            print("[%3d]parent=%3d '%16s' next=%3d child=%3d"
-                  " file=%3d collision=%3d unknown=%d" % (
-                      i, dirList[i].parentIndex, dirList[i].getName(),
-                      dirList[i].nextIndex, dirList[i].firstDirIndex,
-                      dirList[i].firstFileIndex,
-                      dirList[i].nextCollision, dirList[i].unknown))
+        dirList[i].printEntry(i, len(dirList))
 
-    # Parses file entry table
-    fileList = [FileEntry(fileTable[0:0x30])]  # first (dummy) entry
-    fileCount = fileList[0].count
-    for i in range(1, fileCount):
-        fileList.append(FileEntry(fileTable[i * 0x30: (i + 1) * 0x30]))
+    fileList = savefilesystem.getFileList(
+        fsHeader.fileTableOff, saveImage)
 
     print("File list:")
     for i in range(len(fileList)):
-        if fileList[i].count == fileCount:
-            print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
-                i, fileList[i].count, fileList[i].maxCount,
-                fileList[i].nextDummyIndex))
-        else:
-            print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
-                  " size=%10d block=%5d unk1=%10d unk2=%10d" % (
-                      i, fileList[i].parentIndex, fileList[i].getName(),
-                      fileList[i].nextIndex, fileList[i].nextCollision,
-                      fileList[i].size, fileList[i].blockIndex,
-                      fileList[i].u1, fileList[i].u2))
+        fileList[i].printEntryAsSave(i, len(fileList))
 
-    # Verifies directory hash table
-    for i in range(dirHashTableSize):
-        current = dirHashTable[i]
-        while current != 0:
-            if dirList[current].getHash() % dirHashTableSize != i:
-                print("Warning: directory wrong bucket")
-            current = dirList[current].nextCollision
-
-    # Verifies file hash table
-    for i in range(fileHashTableSize):
-        current = fileHashTable[i]
-        while current != 0:
-            if fileList[current].getHash() % fileHashTableSize != i:
-                print("Warning: file wrong bucket")
-            current = fileList[current].nextCollision
+    # Verifies directory & file hash table
+    print("Verifying directory hash table")
+    savefilesystem.verifyHashTable(dirHashTable, dirList)
+    print("Verifying file hash table")
+    savefilesystem.verifyHashTable(fileHashTable, fileList)
 
     # Parses FAT
     fatList = []
-    for i in range(1, fatSize + 1):  # skip the first entry
-        fatList.append(
-            FatEntry(saveImage[fatOff + i * 8: fatOff + (i + 1) * 8]))
+    for i in range(1, fsHeader.fatSize + 1):  # skip the first entry
+        fatList.append(savefilesystem.FatEntry(
+            saveImage[fsHeader.fatOff + i * 8: fsHeader.fatOff + (i + 1) * 8]))
 
-    def ExtractDir(i, parent):
-        if output_dir is not None:
-            dir = os.path.join(output_dir, parent, dirList[i].getName())
-            if not os.path.isdir(dir):
-                os.mkdir(dir)
-
-        # Extracts subdirectories
-        if dirList[i].firstDirIndex != 0:
-            ExtractDir(dirList[i].firstDirIndex,
-                       os.path.join(parent, dirList[i].getName()))
-
-        # Extract files
-        if dirList[i].firstFileIndex != 0:
-            ExtractFile(dirList[i].firstFileIndex,
-                        os.path.join(parent, dirList[i].getName()))
-
-        # Extract sibling directories
-        if dirList[i].nextIndex != 0:
-            ExtractDir(dirList[i].nextIndex, parent)
-
-    def ExtractFile(i, parent):
-        full_name = os.path.join(parent, fileList[i].getName())
-        if output_dir is not None:
-            file = open(os.path.join(output_dir, full_name), 'wb')
-        else:
-            file = None
-        fileSize = fileList[i].size
+    def saveFileDumper(fileEntry, file, _):
+        fileSize = fileEntry.size
         if fileSize != 0:
-            currentBlock = fileList[i].blockIndex
+            currentBlock = fileEntry.blockIndex
             previousBlock = -1
             if not fatList[currentBlock].start:
                 print("Warning: file start at non-starting block")
@@ -350,9 +170,9 @@ def main():
                 else:
                     tranSize = 1
 
-                tranSize *= blockSize
+                tranSize *= fsHeader.blockSize
                 tranSize = min(fileSize, tranSize)
-                pos = currentBlock * blockSize
+                pos = currentBlock * fsHeader.blockSize
                 if file is not None:
                     file.write(dataRegion[pos: pos + tranSize])
                 fileSize -= tranSize
@@ -363,15 +183,8 @@ def main():
                 previousBlock = currentBlock
                 currentBlock = fatList[currentBlock].v
 
-        if file is not None:
-            file.close()
+    savefilesystem.extractAll(dirList, fileList, output_dir, saveFileDumper)
 
-        # Extract sibling files
-        if fileList[i].nextIndex != 0:
-            ExtractFile(fileList[i].nextIndex, parent)
-
-    # Extracts ALL
-    ExtractDir(1, "")
     print("Finished!")
 
 
