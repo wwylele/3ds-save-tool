@@ -1,8 +1,12 @@
 3DS Save File Extraction Tools & Documentation
 ----
 
-These are tools parsing save (DISA file) and extdata (DIFF file) and extracting files from them. There is also documentation for these two
-formats (_TODO: actually write something about DIFF_). Note that these tools can only parse decrypted files.
+These are tools parsing save (DISA file) and extdata (DIFF file) and extracting files from them. Note that these tools can only parse decrypted files.
+
+There is also documentation for these two formats:
+ - [3DS Save Format (DISA)](DISA.md)
+ - _TODO: actually write something about DIFF_.
+
 
 Required: python 3
 
