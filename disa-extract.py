@@ -132,14 +132,14 @@ def main():
 
     print("Directory list:")
     for i in range(len(dirList)):
-        dirList[i].printEntry(i, len(dirList))
+        dirList[i].printEntry(i)
 
     fileList = savefilesystem.getFileList(
         fsHeader.fileTableOff, saveImage)
 
     print("File list:")
     for i in range(len(fileList)):
-        fileList[i].printEntryAsSave(i, len(fileList))
+        fileList[i].printEntryAsSave(i)
 
     # Verifies directory & file hash table
     print("Verifying directory hash table")

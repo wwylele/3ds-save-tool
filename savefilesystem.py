@@ -83,11 +83,13 @@ class DirEntry(HashableEntry):
         self.count, self.maxCount, self.nextDummyIndex \
             = struct.unpack('<II28xI', raw)
 
+        self.isDummy = False  # will be set later
+
     def getName(self):
         return trimBytes(self.name).decode()
 
-    def printEntry(self, i, dirCount):
-        if self.count == dirCount:
+    def printEntry(self, i):
+        if self.isDummy:
             print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
                 i, self.count, self.maxCount,
                 self.nextDummyIndex))
@@ -117,6 +119,8 @@ class FileEntry(HashableEntry):
         self.count, self.maxCount, self.nextDummyIndex \
             = struct.unpack('<II36xI', raw)
 
+        self.isDummy = False  # will be set later
+
     def getName(self):
         return trimBytes(self.name).decode()
 
@@ -125,8 +129,8 @@ class FileEntry(HashableEntry):
             i, self.count, self.maxCount,
             self.nextDummyIndex))
 
-    def printEntryAsSave(self, i, fileCount):
-        if self.count == fileCount:
+    def printEntryAsSave(self, i):
+        if self.isDummy:
             self.printDummyEntry(i)
         else:
             print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
@@ -136,8 +140,8 @@ class FileEntry(HashableEntry):
                       self.size, self.blockIndex,
                       self.u1, self.u2))
 
-    def printEntryAsExtdata(self, i, fileCount):
-        if self.count == fileCount:
+    def printEntryAsExtdata(self, i):
+        if self.isDummy:
             self.printDummyEntry(i)
         else:
             print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
@@ -176,12 +180,25 @@ def getHashTable(offset, size, partitionImage):
     return hashTable
 
 
+def scanDummyEntry(list):
+    list[0].isDummy = True
+    i = list[0].nextDummyIndex
+    count = list[0].count
+    maxCount = list[0].maxCount
+    while i != 0:
+        if list[i].count != count or list[i].maxCount != maxCount:
+            print("Warning: dummy entries have different content")
+        list[i].isDummy = True
+        i = list[i].nextDummyIndex
+
+
 def getDirList(offset, partitionImage):
     dirList = [DirEntry(partitionImage[offset:offset + 0x28])]
     dirCount = dirList[0].count
     for i in range(1, dirCount):
         dirList.append(DirEntry(partitionImage[
             offset + i * 0x28: offset + (i + 1) * 0x28]))
+    scanDummyEntry(dirList)
     return dirList
 
 
@@ -192,6 +209,7 @@ def getFileList(offset, partitionImage):
     for i in range(1, fileCount):
         fileList.append(FileEntry(partitionImage[
             offset + i * 0x30: offset + (i + 1) * 0x30]))
+    scanDummyEntry(fileList)
     return fileList
 
 

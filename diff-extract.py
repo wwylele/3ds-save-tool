@@ -112,14 +112,14 @@ def extractExtdata(extdataDir, outputDir):
 
     print("Directory list:")
     for i in range(len(dirList)):
-        dirList[i].printEntry(i, len(dirList))
+        dirList[i].printEntry(i)
 
     fileList = savefilesystem.getFileList(
         fsHeader.fileTableOff, vsxe)
 
     print("File list:")
     for i in range(len(fileList)):
-        fileList[i].printEntryAsExtdata(i, len(fileList))
+        fileList[i].printEntryAsExtdata(i)
 
     # Verifies directory & file hash table
     print("Verifying directory hash table")
