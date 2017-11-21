@@ -97,6 +97,13 @@ def extractExtdata(extdataDir, outputDir):
     fsHeader = savefilesystem.Header(
         vsxe[filesystemHeaderOff:filesystemHeaderOff + 0x68], False)
 
+    dataRegion = vsxe[
+        fsHeader.dataRegionOff: fsHeader.dataRegionOff +
+        fsHeader.dataRegionSize * fsHeader.blockSize]
+
+    # parse FAT
+    fat = savefilesystem.FAT(fsHeader, vsxe)
+
     # parse hash tables
     dirHashTable = savefilesystem.getHashTable(fsHeader.dirHashTableOff,
                                                fsHeader.dirHashTableSize,
@@ -108,14 +115,14 @@ def extractExtdata(extdataDir, outputDir):
 
     # Parses directory & file entry table
     dirList = savefilesystem.getDirList(
-        fsHeader.dirTableOff, vsxe)
+        fsHeader, vsxe, dataRegion, fat)
 
     print("Directory list:")
     for i in range(len(dirList)):
         dirList[i].printEntry(i)
 
     fileList = savefilesystem.getFileList(
-        fsHeader.fileTableOff, vsxe)
+        fsHeader, vsxe, dataRegion, fat)
 
     print("File list:")
     for i in range(len(fileList)):
@@ -126,6 +133,12 @@ def extractExtdata(extdataDir, outputDir):
     savefilesystem.verifyHashTable(dirHashTable, dirList)
     print("Verifying file hash table")
     savefilesystem.verifyHashTable(fileHashTable, fileList)
+
+    # Walks through free blocks
+    print("Walking through free blocks")
+    fat.walk(-1, lambda _: None)
+
+    fat.allVisited()
 
     def extFileDumper(fileEntry, file, index):
         print("Extracting %s" % fileEntry.getName())

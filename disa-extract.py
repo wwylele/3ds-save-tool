@@ -117,7 +117,7 @@ def main():
             fsHeader.dataRegionOff: fsHeader.dataRegionOff +
             fsHeader.dataRegionSize * fsHeader.blockSize]
 
-    # parse hash tables
+    # Parses hash tables
     dirHashTable = savefilesystem.getHashTable(fsHeader.dirHashTableOff,
                                                fsHeader.dirHashTableSize,
                                                saveImage)
@@ -126,16 +126,19 @@ def main():
                                                 fsHeader.fileHashTableSize,
                                                 saveImage)
 
+    # Parses FAT
+    fat = savefilesystem.FAT(fsHeader, saveImage)
+
     # Parses directory & file entry table
     dirList = savefilesystem.getDirList(
-        fsHeader.dirTableOff, saveImage)
+        fsHeader, saveImage, dataRegion, fat)
 
     print("Directory list:")
     for i in range(len(dirList)):
         dirList[i].printEntry(i)
 
     fileList = savefilesystem.getFileList(
-        fsHeader.fileTableOff, saveImage)
+        fsHeader, saveImage, dataRegion, fat)
 
     print("File list:")
     for i in range(len(fileList)):
@@ -147,43 +150,33 @@ def main():
     print("Verifying file hash table")
     savefilesystem.verifyHashTable(fileHashTable, fileList)
 
-    # Parses FAT
-    fatList = []
-    for i in range(1, fsHeader.fatSize + 1):  # skip the first entry
-        fatList.append(savefilesystem.FatEntry(
-            saveImage[fsHeader.fatOff + i * 8: fsHeader.fatOff + (i + 1) * 8]))
+    # Walks through free blocks
+    print("Walking through free blocks")
+    fat.walk(-1, lambda _: None)
 
     def saveFileDumper(fileEntry, file, _):
         fileSize = fileEntry.size
+
+        def blockDumper(index):
+            nonlocal fileSize
+            if fileSize == 0:
+                print("Warning: excessive block")
+                return
+            tranSize = min(fileSize, fsHeader.blockSize)
+            pos = index * fsHeader.blockSize
+            if file is not None:
+                file.write(dataRegion[pos: pos + tranSize])
+            fileSize -= tranSize
+
         if fileSize != 0:
-            currentBlock = fileEntry.blockIndex
-            previousBlock = -1
-            if not fatList[currentBlock].start:
-                print("Warning: file start at non-starting block")
-            while True:
-                if fatList[currentBlock].u != previousBlock:
-                    print("Warning: previous index mismatch")
+            fat.walk(fileEntry.blockIndex, blockDumper)
+        if fileSize != 0:
+            print("Warning: not enough block")
 
-                if fatList[currentBlock].expand:
-                    tranSize = fatList[currentBlock + 1].v - \
-                        fatList[currentBlock + 1].u + 1
-                else:
-                    tranSize = 1
-
-                tranSize *= fsHeader.blockSize
-                tranSize = min(fileSize, tranSize)
-                pos = currentBlock * fsHeader.blockSize
-                if file is not None:
-                    file.write(dataRegion[pos: pos + tranSize])
-                fileSize -= tranSize
-                if fileSize <= 0:
-                    if fatList[currentBlock].v != -1:
-                        print("Warning: file end before block end")
-                    break
-                previousBlock = currentBlock
-                currentBlock = fatList[currentBlock].v
-
+    print("Walking through files and dumping")
     savefilesystem.extractAll(dirList, fileList, output_dir, saveFileDumper)
+
+    fat.allVisited()
 
     print("Finished!")
 

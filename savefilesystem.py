@@ -36,15 +36,19 @@ class Header(object):
             printf("Warning: fatSize != dataRegionSize")
 
         if not hasData:
-            dirTableBlockIndex, dirTableBlockCount, self.dirMaxCount, self.dirUnk, \
-                fileTableBlockIndex, fileTableBlockCount, self.fileMaxCount, self.fileUnk \
+            self.dirTableBlockIndex, self.dirTableBlockCount, self.dirMaxCount, self.dirUnk, \
+                self.fileTableBlockIndex, self.fileTableBlockCount, self.fileMaxCount, self.fileUnk \
                 = struct.unpack('<IIIIIIII', raw[0x48:0x68])
-            self.dirTableOff = self.dataRegionOff + dirTableBlockIndex * self.blockSize
-            self.fileTableOff = self.dataRegionOff + fileTableBlockIndex * self.blockSize
+            self.dirTableOff = 0
+            self.fileTableOff = 0
+            self.tableInDataRegion = True
+            print("Info: dirTableBlockCount = %d" % self.dirTableBlockCount)
+            print("Info: fileTableBlockCount = %d" % self.fileTableBlockCount)
         else:
             self.dirTableOff, self.dirMaxCount, self.dirUnk, \
                 self.fileTableOff, self.fileMaxCount, self.fileUnk, \
                 = struct.unpack('<QIIQII', raw[0x48:0x68])
+            self.tableInDataRegion = False
 
         print("Info: dirMaxCount = %d" % self.dirMaxCount)
         print("Info: dirUnk = %d" % self.dirUnk)
@@ -151,25 +155,87 @@ class FileEntry(HashableEntry):
                       self.uniqueId, self.u1, self.u2))
 
 
-class FatEntry(object):
+class FATEntry(object):
     """ FAT entry """
 
     def __init__(self, raw):
         self.u, self.v = struct.unpack('II', raw)
         if self.u >= 0x80000000:
             self.u -= 0x80000000
-            self.start = True
+            self.uFlag = True
         else:
-            self.start = False
+            self.uFlag = False
         if self.v >= 0x80000000:
             self.v -= 0x80000000
-            self.expand = True
+            self.vFlag = True
         else:
-            self.expand = False
+            self.vFlag = False
 
-        # shift index to match block index
-        self.u -= 1
-        self.v -= 1
+        self.visited = False
+
+
+class FAT(object):
+    def __init__(self, fsHeader, partitionImage):
+        self.fatList = []
+        for i in range(0, fsHeader.fatSize + 1):  # the actual FAT size is one larger
+            self.fatList.append(FATEntry(
+                partitionImage[fsHeader.fatOff + i * 8: fsHeader.fatOff + (i + 1) * 8]))
+
+    def walk(self, start, blockHandler):
+        start += 1  # shift index
+        current = start
+        previous = 0
+        while True:
+            if current == start:
+                if not self.fatList[current].uFlag and start != 0:
+                    # "free block file" has different usage of uFlag. TODO: investigate
+                    print("Warning: first node not marked start @ %i" % current)
+            else:
+                if self.fatList[current].uFlag and start != 0:
+                    # "free block file" has different usage of uFlag. TODO: investigate
+                    print("Warning: other node marked start @ %i" % current)
+            if self.fatList[current].u != previous:
+                print("Warning: previous node mismatch @ %i" % current)
+
+            if self.fatList[current].vFlag:
+                nodeEnd = self.fatList[current + 1].v
+                if self.fatList[current + 1].u != current:
+                    print("Warning: expansion node first block mismatch @ %i" %
+                          (current + 1))
+                if not self.fatList[current + 1].uFlag:
+                    print("Warning: expansion node first block not marked @ %i" % (
+                        current + 1))
+                if self.fatList[current + 1].vFlag:
+                    print("Warning: expansion node first block with wrong mark @ %i" % (
+                        current + 1))
+                if self.fatList[nodeEnd].u != current or \
+                        self.fatList[nodeEnd].v != nodeEnd:
+                    print("Warning: expansion node last block mismatch @ %i" % nodeEnd)
+                if not self.fatList[nodeEnd].uFlag:
+                    print(
+                        "Warning: expansion node first block not marked @ %i" % nodeEnd)
+                if self.fatList[nodeEnd].vFlag:
+                    print(
+                        "Warning: expansion node last block with wrong mark @ %i" % nodeEnd)
+            else:
+                nodeEnd = current
+
+            for i in range(current, nodeEnd + 1):
+                if self.fatList[i].visited:
+                    print("Warning: already visited @ %i" % i)
+                blockHandler(i - 1)  # shift index back
+                self.fatList[i].visited = True
+
+            previous = current
+            current = self.fatList[current].v
+
+            if current == 0:
+                break
+
+    def allVisited(self):
+        for i in range(len(self.fatList)):
+            if not self.fatList[i].visited:
+                print("Warning: block %d not visited" % i)
 
 
 def getHashTable(offset, size, partitionImage):
@@ -192,22 +258,50 @@ def scanDummyEntry(list):
         i = list[i].nextDummyIndex
 
 
-def getDirList(offset, partitionImage):
-    dirList = [DirEntry(partitionImage[offset:offset + 0x28])]
+def getAllocatedList(dataRegion, blockSize, fat, index, count):
+    result = bytearray()
+    left = count
+
+    def transferBlock(i):
+        nonlocal count
+        if count == 0:
+            print("Warning: excessive block")
+            return
+        result.extend(dataRegion[blockSize * i: blockSize * (i + 1)])
+        count -= 1
+    fat.walk(index, transferBlock)
+    if count != 0:
+        print("Warning: not enough block")
+    return result
+
+
+def getDirList(fsHeader, partitionImage, dataRegion, fat):
+    offset = fsHeader.dirTableOff
+    if fsHeader.tableInDataRegion:
+        data = getAllocatedList(dataRegion, fsHeader.blockSize, fat,
+                                fsHeader.dirTableBlockIndex, fsHeader.dirTableBlockCount)
+    else:
+        data = partitionImage
+    dirList = [DirEntry(data[offset: offset + 0x28])]
     dirCount = dirList[0].count
     for i in range(1, dirCount):
-        dirList.append(DirEntry(partitionImage[
+        dirList.append(DirEntry(data[
             offset + i * 0x28: offset + (i + 1) * 0x28]))
     scanDummyEntry(dirList)
     return dirList
 
 
-def getFileList(offset, partitionImage):
-    fileList = [FileEntry(
-        partitionImage[offset:offset + 0x30])]
+def getFileList(fsHeader, partitionImage, dataRegion, fat):
+    offset = fsHeader.fileTableOff
+    if fsHeader.tableInDataRegion:
+        data = getAllocatedList(dataRegion, fsHeader.blockSize, fat,
+                                fsHeader.fileTableBlockIndex, fsHeader.fileTableBlockCount)
+    else:
+        data = partitionImage
+    fileList = [FileEntry(data[offset: offset + 0x30])]
     fileCount = fileList[0].count
     for i in range(1, fileCount):
-        fileList.append(FileEntry(partitionImage[
+        fileList.append(FileEntry(data[
             offset + i * 0x30: offset + (i + 1) * 0x30]))
     scanDummyEntry(fileList)
     return fileList
