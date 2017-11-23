@@ -191,23 +191,25 @@ If the DATA image exists, data region is the whole DATA image; other wise, data 
 |-|-|-|
 |0x00|4|Magic "SAVE"|
 |0x04|4|Magic 0x40000|
-|0x08|8|0x20?|
+|0x08|8|Filesystem Information offset (0x20)|
 |0x10|8|Image size in blocks|
 |0x18|4/8?|Image block size|
-|0x1C|8|Unknown:thinking:|
+|0x1C|4|Unknown:thinking:|
+|||Below is Filesystem Information|
+|0x20|4|Unknown:thinking:|
 |0x24|4|Data region block size|
 |0x28|8|Directory hash table offset|
 |0x30|4|Directory hash table bucket count|
-|0x34|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
+|0x34|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
 |0x38|8|File hash table offset|
 |0x40|4|File hash table bucket count|
-|0x44|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
+|0x44|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
 |0x48|8|File allocation table offset|
 |0x50|4|File allocation table entry count|
-|0x54|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
+|0x54|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
 |0x58|8|Data region offset (if no DATA image)|
 |0x60|4|Data region block count (= File allocation table entry count)|
-|0x64|4|Unknown. Usually 0 or equalls FAT entry count:thinking:|
+|0x64|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
 |0x68|8|If DATA exists: directory entry table offset;
 |||otherwise: u32 directory entry table starting block index + u32 directory entry table block count|
 |0x70|4|Maximum directory count|
@@ -219,6 +221,7 @@ If the DATA image exists, data region is the whole DATA image; other wise, data 
 
  - All "offsets" are relative to the beginning of SAVE image. All "starting block index" are relative to the beginning of data region.
  - The file/directory bucket count & maximum count fields are the same as the arguments passed in when formating the save.
+ - When DATA partition doesn't exist, directory & file entry tables are allocated in the data region, and while be marked allocated in file allocation table as if they are two normal files. However, only continuous allocation as been observed, so directly reading `block_count * block_size` bytes from `data_region + starting_block_index * block_size` should be safe. See the section _File Allocation Table_ below for more information.
 
 ### Directory Entry Table
 The directory entry table is an array of the following entry type. It describes the directory hierarchy of the filesystem.
@@ -292,23 +295,36 @@ uint32_t GetBucket(
 ```
 
 ### File Allocation Table
-The file allocation table is an array of the following 8-byte entry. The array size is actually one more than the size recorded in the SAVE header. Each entry corresponds to a block in the data region (the block size is defined in SAVE header). However, the 0th entry seems to corresponds to nothing, so the corresponding block index is off by one. e.g. entry 31 in this table corresponds to block 30 in the data region.
+The file allocation table is an array of the following 8-byte entry. The array size is actually one more than the size recorded in the SAVE header. Each entry corresponds to a block in the data region (the block size is defined in SAVE header). However, the 0th entry corresponds to nothing, so the corresponding block index is off by one. e.g. entry 31 in this table corresponds to block 30 in the data region.
 
 |Offset|Length|Description|
 |-|-|-|
-|0x00|4|bit[0:30]: Index U; bit[31]: Is starting node|
-|0x04|4|bit[0:30]: Index V; bit[31]: Has expanded node|
+|0x00|4|bit[0:30]: Index U; bit[31]: Flag U
+|0x04|4|bit[0:30]: Index V; bit[31]: Flag V|
 
 Entries in this table forms several chains, representing how blocks in the data region should be linked together. However, unlike normal FAT system, there are two kinds of entry in this table:
- - Chain node entry. Index U is the index of the previous chain node entry (0 if this is the first node). Index V is the index of the next chain node entry(0 if this is the last node)
- - Expanded node entry. Index U is the index of the leading chain node entry and Index V is the index of the last block in the expanded node.
+ - Chain node entry.
 
-When the `has expanded node` bit is set for a chain node entry, the entry is followed by one or more expanded node, which indicates this node in the chain should have a size of multiple blocks. The first and the last entries in the expanded node contains the index of the start and the end. The U and V index for other expanded nodes are unknown (unused?).
+    - `Index U` is the index of the previous chain node entry (0 if this is the first node).
+
+    - `Index V` is the index of the next chain node entry(0 if this is the last node).
+
+    - `Flag U` is set for the first node for a file.
+
+    - `Flag V` is set when this node entry is followed by a group of one or more expanded node entries.
+ - Expanded node entry.
+
+    - `Index U` is the index of the leading chain node entry and
+    - `Index V` is the index of the last block in the expanded node. However only the first and the last expanded node entries in a group has these two index set. For other entries, these two index is unused, and can be even unhashed by IVFC tree if the group is large enough.
+
+    - `Flag U` is set for the first and the last node in a group.
 
 Here is an example of how a file is reconstructed following the file allocation table:
 ![foo.bar](disa-fat.png)
 
 TODO: explain more if this picture is insufficient.
+
+All entries that are not allocated also form one chain. The head of this chain is entry[0].
 
 ## Recap of How to Extract Files From a Save File
  - Find the active partition table and the partition(s).
