@@ -185,14 +185,12 @@ class FAT(object):
         start += 1  # shift index
         current = start
         previous = 0
-        while True:
+        while current != 0:
             if current == start:
-                if not self.fatList[current].uFlag and start != 0:
-                    # "free block file" has different usage of uFlag. TODO: investigate
+                if not self.fatList[current].uFlag:
                     print("Warning: first node not marked start @ %i" % current)
             else:
-                if self.fatList[current].uFlag and start != 0:
-                    # "free block file" has different usage of uFlag. TODO: investigate
+                if self.fatList[current].uFlag:
                     print("Warning: other node marked start @ %i" % current)
             if self.fatList[current].u != previous:
                 print("Warning: previous node mismatch @ %i" % current)
@@ -229,8 +227,14 @@ class FAT(object):
             previous = current
             current = self.fatList[current].v
 
-            if current == 0:
-                break
+    def visitFreeBlock(self):
+        self.fatList[0].visited = True
+        if self.fatList[0].u != 0:
+            print("Warning: free leading block has u = %d" % fatList[0].u)
+        if self.fatList[0].uFlag or self.fatList[0].vFlag:
+            print("Warning: free leading block has flag set")
+        start = self.fatList[0].v
+        self.walk(start - 1, lambda _: None)
 
     def allVisited(self):
         for i in range(len(self.fatList)):

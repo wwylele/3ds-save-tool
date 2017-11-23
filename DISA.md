@@ -302,7 +302,7 @@ The file allocation table is an array of the following 8-byte entry. The array s
 |0x00|4|bit[0:30]: Index U; bit[31]: Flag U
 |0x04|4|bit[0:30]: Index V; bit[31]: Flag V|
 
-Entries in this table forms several chains, representing how blocks in the data region should be linked together. However, unlike normal FAT system, there are two kinds of entry in this table:
+Entries in this table forms several chains, representing how blocks in the data region should be linked together. However, unlike normal FAT system, there are three kinds of entry in this table:
  - Chain node entry.
 
     - `Index U` is the index of the previous chain node entry (0 if this is the first node).
@@ -318,13 +318,13 @@ Entries in this table forms several chains, representing how blocks in the data 
     - `Index V` is the index of the last block in the expanded node. However only the first and the last expanded node entries in a group has these two index set. For other entries, these two index is unused, and can be even unhashed by IVFC tree if the group is large enough.
 
     - `Flag U` is set for the first and the last node in a group.
+  - Leading entry. This is always the 0-th entry.
+    - `Index V` is the index of the first node for the "free block file". All free blocks are chained in this file.
 
 Here is an example of how a file is reconstructed following the file allocation table:
 ![foo.bar](disa-fat.png)
 
 TODO: explain more if this picture is insufficient.
-
-All entries that are not allocated also form one chain. The head of this chain is entry[0].
 
 ## Recap of How to Extract Files From a Save File
  - Find the active partition table and the partition(s).

@@ -136,7 +136,7 @@ def extractExtdata(extdataDir, outputDir):
 
     # Walks through free blocks
     print("Walking through free blocks")
-    fat.walk(-1, lambda _: None)
+    fat.visitFreeBlock()
 
     fat.allVisited()
 

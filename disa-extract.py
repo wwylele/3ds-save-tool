@@ -152,7 +152,8 @@ def main():
 
     # Walks through free blocks
     print("Walking through free blocks")
-    fat.walk(-1, lambda _: None)
+    fat.visitFreeBlock()
+
 
     def saveFileDumper(fileEntry, file, _):
         fileSize = fileEntry.size
