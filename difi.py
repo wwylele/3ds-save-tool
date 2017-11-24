@@ -55,8 +55,8 @@ class PartEntry(object):
             print("Error: Wrong IVFC version")
             exit(1)
 
-        if masterHashSize != 0x20:
-            print("Error: Wrong master hash size %d" % masterHashSize)
+        if masterHashSize != hashSize:
+            print("Error: Master hash size mismatch")
             exit(1)
 
         if unknown != 0x78:

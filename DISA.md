@@ -75,7 +75,7 @@ The DIFI header locates at the beginning of a partition entry.
 |0x18|8|DPFS descriptor offset|
 |0x20|8|DPFS descriptor size|
 |0x28|8|Partition hash offset|
-|0x30|8|Partition has size|
+|0x30|8|Partition hash size|
 |0x38|1|When this byte is non-zero, this is a DATA partition, and the IVFC level 4 is located outside DPFS tree. See below|
 |0x39|1|DPFS tree level 1 selector|
 |0x3A|2|Unknown unused? :thinking:|
@@ -89,7 +89,7 @@ This header defines the rest components of the partition (IVFC descriptor, DPFS 
 |-|-|-|
 |0x00|4|Magic "IVFC"|
 |0x04|4|Magic 0x20000|
-|0x08|8|Master hash size|
+|0x08|8|Master hash size = partition hash size in DIFI header|
 |0x10|8|IVFC level 1 offset|
 |0x18|8|IVFC level 1 size|
 |0x20|8|IVFC level 1 block size in log2|
@@ -166,6 +166,8 @@ Effectively, the active data is scattered among the two level 3 chunk. One can a
 
 ### IVFC tree
 The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of SHA-256 hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
+
+The partition hash (a.k.a "master hash") in the partition entry can be seen as IVFC level 0, which hashes level 1 following the same rule. The partition hash is usually 0x20 long consisting only one hash. This is because most save file is not large enough to have multiple hashes on the top level.
 
 However, not all data are hashed - only ranges that have been written with valid data are properly hashed. It is even observed that one file in the filesystem (will be introduced later) can have part of its data unhashed. This happens when a file is create with a large size, but only part of the data is filled by File:Write, and FS will refuse to read the unwritten (unhashed) part, returning verification failure error. (This probably needs more test to confirm)
 
