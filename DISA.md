@@ -1,7 +1,7 @@
 # 3DS Save Format
 
 ## Scope of This Documentation
-This documentation describes the format description for 3DS normal save contained in cartridge, SD and NAND. It does not cover extdata or any other type of saves.
+This documentation describes the format for 3DS normal save contained in cartridge, SD and NAND. It does not cover extdata or any other type of saves.
 
 However, this documentation only describe plaintext DISA format and its content. Any encryption layer on top of it, such as cartridge save encryption, SD file encryption, or NAND partition encryption, is not covered.
 
