@@ -82,7 +82,7 @@ Still the same way as [DISA file](DISA.md#Partition), except that DIFF only has 
  - Now you get IVFC level 4 as the inner image. Proceed to decode it according to its own format spec.
 
 ## Recap of Chain of Trust
- - CMAC header verifies DISA header
+ - CMAC header verifies DIFF header
  - DIFF header verifies partition descriptor
  - Partition descriptor verifies level 1 of its IVFC tree
  - Each IVFC level verifies the next level, until the level 4, which is the inner image.
