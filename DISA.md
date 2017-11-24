@@ -143,7 +143,7 @@ For DATA partition, it contains:
  - Level 4 of the IVFC tree, and inside
    - The DATA image
 
-### DPFS tree
+### DPFS Tree
 Everything inside the DPFS tree comes in pairs, and at one time only one of a pair is active. The tree is probably designed for data staging: for a file writing operation, it writes to the inactive part, then commit the data by switching a bit to activate it.
 
 Each level of DPFS tree consists of a pair of chunks. The size of one chunk is defined as it in the DPFS descriptor, so the total size of a level is actually twice as large as the size recorded in the descriptor. For level 1 and 2, the chunk is a bit array, in which each bits corresponds to a block in the next level (the block size of the next level is defined in the DPFS descriptor). This bit indicates which one of the pair in the next level is active for this block: 0 means the first one and 1 means the second one. The active chunk of level 1 is selected by `DPFS tree level 1 selector` in the DIFI header. The bit array is encoded in u32 array, with MSB as the first bit of each 32 bits.
@@ -164,7 +164,7 @@ and one want to read byte at 0x1234567 of level 3, the following calculation is 
 
 Effectively, the active data is scattered among the two level 3 chunk. One can assemble the whole active level 3 image following the same rule.
 
-### IVFC tree
+### IVFC Tree
 The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of SHA-256 hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
 
 The partition hash (a.k.a "master hash") in the partition entry can be seen as IVFC level 0, which hashes level 1 following the same rule. The partition hash is usually 0x20 long consisting only one hash. This is because most save file is not large enough to have multiple hashes on the top level.
@@ -181,13 +181,13 @@ In the SAVE image and the optional DATA image, there is a filesystem consisting 
  - Directory Hash Table
  - File Hash Table
  - File Allocation Table
- - Directory Entry Table
- - File Entry Table
+ - Directory Entry Table (can be in data region)
+ - File Entry Table (can be in data region)
  - Data region
 
 If the DATA image exists, data region is the whole DATA image; other wise, data region is located inside the SAVE image.
 
-### SAVE header
+### SAVE Header
 
 |Offset|Length|Description|
 |-|-|-|
@@ -255,7 +255,7 @@ The file entry table is an array of the following entry type. It contains inform
 |Offset|Length|Description|
 |-|-|-|
 |0x00|4|Parent directory index in directory entry table|
-|0x04|16|file name|
+|0x04|16|File name|
 |0x14|4|Next sibling file index. 0 if this is the last one|
 |0x18|4|Unknown. Timestamps? :thinking:|
 |0x1C|4|First block index in data region. 0x80000000 if the file is just created and has no data.|
