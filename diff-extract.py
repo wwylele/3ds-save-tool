@@ -21,10 +21,6 @@ def unwrapDIFF(filePath, expectedUniqueId=None):
         activeTable, tableHash, uniqueId, \
         = struct.unpack('<IIQQQQQI32sQ', diff.read(0x5C))
 
-    if expectedUniqueId is not None:
-        if expectedUniqueId != uniqueId:
-            print("Warning: unique ID mismatch")
-
     if DIFF != 0x46464944:
         print("Error: Not a DIFF format")
         exit(1)
@@ -40,6 +36,11 @@ def unwrapDIFF(filePath, expectedUniqueId=None):
     else:
         print("Error: Wrong active table ID %d" % activeTable)
         exit(1)
+
+    print("Info: Unique ID = %016X" % uniqueId)
+    if expectedUniqueId is not None:
+        if expectedUniqueId != uniqueId:
+            print("Warning: unique ID mismatch")
 
     # Verify partition table hash
     diff.seek(partTableOff, os.SEEK_SET)
