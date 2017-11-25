@@ -48,7 +48,7 @@ The DISA header is located at 0x100 in the save file image.
 |0x6C|0x20|SHA-256 over the active table|
 |0x8C|0x74|Unused, might contain leftover data|
 
-This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header is relative to the beginning of the file.
+This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header are relative to the beginning of the, except for partition entry offsets, which are relative to the beginning of the (active) partition table.
 
 The unknown field 0x69 usually is 0. However, other values have been observed:
  - Pokemon Sun and Super Smash Bros. has 0x000001 (No DATA partition)
