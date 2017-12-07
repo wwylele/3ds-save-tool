@@ -6,7 +6,7 @@ These are tools parsing save (DISA file) and extdata (DIFF file) and extracting 
 There is also documentation for these two formats:
  - [3DS Save Format (DISA)](DISA.md)
  - [DIFF Format](DIFF.md).
- - [3DS Extdat Format](EXTDATA.md)
+ - [3DS Extdata Format](EXTDATA.md)
 
 
 Required: python 3
