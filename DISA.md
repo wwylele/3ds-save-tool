@@ -19,7 +19,7 @@ A save file consists of the following components
 
 Note:
  - Among the two partition tables, only one is active at one time. For a new-created save file, it is possible that the inactive partition table contains invalid data.
- - There are two type of saves: with or without the DATA partition. The type is decided by the parameter `duplicate data` when formating a save (`FS:FormatSaveData` or `CreateSystemSaveData`). When this parameter is 0 (`false`), the DATA partition presents. The implication of this second partition is explained in the following sections.
+ - There are two type of saves: with or without the DATA partition. The type is decided by the parameter `duplicate data` when formating a save (`FS:FormatSaveData` or `CreateSystemSaveData`). When this parameter is 0 (`false`), the DATA partition presents. The implication of this second partition is explained in the following sections. In a few words, NOT having the second partition (i.e. `duplicate data = true`) makes all save data duplicated. When a save archive is opened, all operation is done on the non-active part of the data (probably via the non-active partition table), and only if `ControlArchive(Commit)` is called before closing the archive, the non-active part will be activated and all the change made to the archive is effectively saved.
 
 ## AES CMAC Header
 The AES CMAC is located at the beginning of the save file image, and it is 0x10 long. the rest 0xF0 bytes before the DISA Header are padding/unused.
