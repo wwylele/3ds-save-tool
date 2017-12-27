@@ -6,6 +6,7 @@ This documentation describes the special save format, called "extdata" for 3DS c
 
 ## General Rule
  - All fields are little-endian
+ - All "padding" fields can contain random data from uninitialized memory unless marked as "?" or otherwise stated.
  - " :thinking: " is put next to unfinished/unconfirmed thing
 
 ## Overview of an Extdata
@@ -50,24 +51,24 @@ The inner data of `00000001` DIFF container consists of the following components
 |0x13C|4|Data region block size|
 |0x140|8|Directory hash table offset|
 |0x148|4|Directory hash table bucket count|
-|0x14C|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
+|0x14C|4|Padding|
 |0x150|8|File hash table offset|
 |0x158|4|File hash table bucket count|
-|0x15C|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
+|0x15C|4|Padding|
 |0x160|8|File allocation table offset|
 |0x168|4|File allocation table entry count|
-|0x16C|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
+|0x16C|4|Padding|
 |0x170|8|Data region offset (if no DATA image)|
 |0x178|4|Data region block count (= File allocation table entry count)|
-|0x17C|4|Unknown. Usually 0 or equals FAT entry count:thinking:|
+|0x17C|4|Padding|
 |0x180|4|Directory entry table starting block|
 |0x184|4|Directory entry table block count|
 |0x188|4|Maximum directory count|
-|0x18C|4|Unknown:thinking:|
+|0x18C|4|Padding|
 |0x190|4|File entry table starting block|
 |0x194|4|File entry table block count|
 |0x198|4|Maximum file count|
-|0x19C|4|Unknown:thinking:|
+|0x19C|4|Padding|
 
  - All "offsets" are relative to the beginning of VSXE image. All "starting block index" are relative to the beginning of data region.
 
@@ -90,7 +91,7 @@ This is very similar to the one in [SAVE image](DISA.md#File_Entry_Table). Howev
 |0x00|4|Parent directory index in directory entry table|
 |0x04|16|File name|
 |0x14|4|Next sibling file index. 0 if this is the last one|
-|0x18|4|Unknown :thinking:|
+|0x18|4|Padding|
 |0x1C|4|~~First block index in data region~~ **Always 0x80000000 because unused**|
 |0x20|8|~~File size~~ **Unique DIFF identifier**|
 |0x28|4|Unknown :thinking:|
