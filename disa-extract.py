@@ -8,20 +8,97 @@ import hashlib
 
 import difi
 import savefilesystem
+import key_engine
+
+try:
+    import secrets
+except:
+    class Secrets(object):
+        pass
+
+
+def getDigestBlock(saveType, saveId, header):
+    if saveType == "nand":
+        return b"CTR-SYS0" + struct.pack("<Q", saveId) + header
+    sav0Block = hashlib.sha256(b"CTR-SAV0" + header).digest()
+    return b"CTR-SIGN" + struct.pack("<Q", saveId) + sav0Block
 
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: %s [DISA file] <output dir>" % sys.argv[0])
+        print("Usage: %s input [output] [OPTIONS]" % sys.argv[0])
+        print("")
+        print("Arguments:")
+        print("  input            A DISA file")
+        print("  output           The directory for storing extracted files")
+        print("")
+        print("The following arguments are optional and are only needed for CMAC verification.")
+        print("You need to provide secrets.py to enable CMAC verification.")
+        print(
+            "  -sd              Specify that the DISA file is a save file stored on SD card")
+        print("  -nand            Specify that the DISA file is a save file stored on NAND")
+        print("  -id ID           The save ID of the file in hex")
         exit(1)
 
-    disa = open(sys.argv[1], 'rb')
+    inputPath = None
+    outputPath = None
+    saveId = None
+    saveType = None
 
-    if len(sys.argv) > 2:
-        output_dir = sys.argv[2]
-    else:
-        output_dir = None
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "-id":
+            i += 1
+            saveId = int(sys.argv[i], 16)
+        elif sys.argv[i] == "-sd":
+            saveType = "sd"
+        elif sys.argv[i] == "-nand":
+            saveType = "nand"
+        elif sys.argv[i] == "-card":
+            saveType = "card"
+        else:
+            if inputPath is None:
+                inputPath = sys.argv[i]
+            else:
+                outputPath = sys.argv[i]
+        i += 1
+
+    if inputPath is None:
+        print("Error: no input file given.")
+        exit(1)
+
+    disa = open(inputPath, 'rb')
+
+    secretsDb = secrets.Secrets()
+    keyEngine = key_engine.KeyEngine(secretsDb)
+
+    Cmac = disa.read(0x10)
+    disa.seek(0x100, os.SEEK_SET)
+    header = disa.read(0x100)
+
+    if outputPath is None:
         print("No output directory given. Will only do data checking.")
+
+    if saveType is None:
+        print("No save type specified. Will skip CMAC verification.")
+    elif saveType == "nand" or saveType == "sd":
+        if saveId is None:
+            print("No save ID specified. Will skip CMAC verification.")
+        else:
+            key = keyEngine.getKeySdNandCmac()
+            if key is None:
+                print("No enough secrets provided. Will skip CMAC verification.")
+            else:
+                digest = hashlib.sha256(getDigestBlock(
+                    saveType, saveId, header)).digest()
+                import cmac
+                if Cmac != cmac.AesCmac(digest, key):
+                    print("Error: CMAC mismatch.")
+                    exit(1)
+                else:
+                    print("Info: CMAC verified.")
+    else:
+        print("Unsupported save type. Will skip CMAC verification.")
 
     # Reads DISA header
     disa.seek(0x100, os.SEEK_SET)
@@ -31,8 +108,8 @@ def main():
         dataPartEntryOff, dataPartEntrySize, \
         savePartOff, savePartSize, \
         dataPartOff, dataPartSize, \
-        activeTable, unk1, unk2 = struct.unpack(
-            '<IIQQQQQQQQQQQQBBH', disa.read(0x6C))
+        activeTable, unk1, unk2, tableHash = struct.unpack(
+            '<IIQQQQQQQQQQQQBBH32s116x', header)
 
     if DISA != 0x41534944:
         print("Error: Not a DISA format")
@@ -65,7 +142,6 @@ def main():
         print("Warning: Unknown = 0x%X" % Unknown)
 
     # Verify partition table hash
-    tableHash = disa.read(0x20)
     disa.seek(partTableOff, os.SEEK_SET)
     partTable = disa.read(partTableSize)
 
@@ -154,7 +230,6 @@ def main():
     print("Walking through free blocks")
     fat.visitFreeBlock()
 
-
     def saveFileDumper(fileEntry, file, _):
         fileSize = fileEntry.size
 
@@ -175,7 +250,7 @@ def main():
             print("Warning: not enough block")
 
     print("Walking through files and dumping")
-    savefilesystem.extractAll(dirList, fileList, output_dir, saveFileDumper)
+    savefilesystem.extractAll(dirList, fileList, outputPath, saveFileDumper)
 
     fat.allVisited()
 

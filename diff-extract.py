@@ -8,18 +8,60 @@ import hashlib
 
 import difi
 import savefilesystem
+import key_engine
+
+try:
+    import secrets
+except:
+    class Secrets(object):
+        pass
 
 
-def unwrapDIFF(filePath, expectedUniqueId=None):
+def unwrapDIFF(filePath, expectedUniqueId=None, saveType=None, saveId=None,
+               saveSubId=None):
     diff = open(filePath, 'rb')
 
-    # Reads DIFF header
+    secretsDb = secrets.Secrets()
+    keyEngine = key_engine.KeyEngine(secretsDb)
+    key = keyEngine.getKeySdNandCmac()
+
+    Cmac = diff.read(0x10)
     diff.seek(0x100, os.SEEK_SET)
+    header = diff.read(0x100)
+
+    digestBlock = None
+    if key is None:
+        print("No enough secrets provided. Will skip CMAC verification.")
+    elif saveType is None:
+        print("No save type specified. Will skip CMAC verification.")
+    elif saveId is None:
+        print("No save ID specified. Will skip CMAC verification.")
+    elif saveType == "extdata":
+        if saveSubId is None:
+            saveSubId = 0
+            quotaFlag = 0
+        else:
+            quotaFlag = 1
+        digestBlock = b"CTR-EXT0" + \
+            struct.pack("<QIQ", saveId, quotaFlag, saveSubId) + header
+    elif saveType == "titledb":
+        digestBlock = b"CTR-9DB0" + struct.pack("<I", saveId) + header
+    else:
+        print("Unknown save type. Will skip CMAC verification.")
+
+    if digestBlock is not None:
+        import cmac
+        if Cmac != cmac.AesCmac(hashlib.sha256(digestBlock).digest(), key):
+            print("Error: CMAC mismatch.")
+            exit(1)
+        else:
+            print("Info: CMAC verified.")
+
     DIFF, ver, \
         secPartTableOff, priPartTableOff, partTableSize, \
         partOff, partSize, \
         activeTable, tableHash, uniqueId, \
-        = struct.unpack('<IIQQQQQI32sQ', diff.read(0x5C))
+        = struct.unpack('<IIQQQQQI32sQ164x', header)
 
     if DIFF != 0x46464944:
         print("Error: Not a DIFF format")
@@ -68,10 +110,11 @@ def trimBytes(bs):
     return bs
 
 
-def extractExtdata(extdataDir, outputDir):
+def extractExtdata(extdataDir, outputDir, saveId=None):
     def extdataFileById(id):
         return os.path.join(extdataDir, "%08x" % id)
-    vsxe = unwrapDIFF(extdataFileById(1))
+    vsxe = unwrapDIFF(extdataFileById(1), saveType="extdata",
+                      saveId=saveId, saveSubId=1)
     # Reads VSXE header
     VSXE, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00, \
         unk1, recentAction, unk2, recentId, unk3, recentPath \
@@ -143,7 +186,8 @@ def extractExtdata(extdataDir, outputDir):
 
     def extFileDumper(fileEntry, file, index):
         print("Extracting %s" % fileEntry.getName())
-        content = unwrapDIFF(extdataFileById(index + 1), fileEntry.uniqueId)
+        content = unwrapDIFF(extdataFileById(index + 1), expectedUniqueId=fileEntry.uniqueId,
+                             saveType="extdata", saveId=saveId, saveSubId=index + 1)
         if file is not None:
             file.write(content)
 
@@ -154,24 +198,64 @@ def extractExtdata(extdataDir, outputDir):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: %s [DIFF file] <output file>" % sys.argv[0])
-        print("   or: %s [extdata dir] <output dir>" % sys.argv[0])
+        print("Usage: %s input [output] [OPTIONS]" % sys.argv[0])
+        print("")
+        print("Arguments:")
+        print("  input            A DIFF file or an extdata directory")
+        print("       (extdata directory is extdata/<ExtdataID-High>/<ExtdataID-low>/00000000)")
+        print("  output           The directory for storing extracted files")
+        print("")
+        print("The following arguments are optional and are only needed for CMAC verification.")
+        print("You need to provide secrets.py to enable CMAC verification.")
+        print("  -extdata         Specify that the DIFF file is a subfile in an extdata")
+        print("  -titledb         Specify that the DIFF file is a title database file")
+        print("                   Note: NAND title database CMAC verification is unimplemented")
+        print("  -id ID           The save ID of the file in hex")
+        print("  -subid ID        The subfile ID of the file in hex")
+        print("                   Only need for extdata subfile, except for Quota.dat")
         exit(1)
 
-    if len(sys.argv) > 2:
-        output = sys.argv[2]
-    else:
-        output = None
-        print("No output file/directory given. Will only do data checking.")
+    inputPath = None
+    outputPath = None
+    saveId = None
+    saveSubId = None
+    saveType = None
 
-    if os.path.isdir(sys.argv[1]):
-        extractExtdata(sys.argv[1], output)
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "-id":
+            i += 1
+            saveId = int(sys.argv[i], 16)
+        elif sys.argv[i] == "-subid":
+            i += 1
+            saveSubId = int(sys.argv[i], 16)
+        elif sys.argv[i] == "-extdata":
+            saveType = "extdata"
+        elif sys.argv[i] == "-titledb":
+            saveType = "titledb"
+        else:
+            if inputPath is None:
+                inputPath = sys.argv[i]
+            else:
+                outputPath = sys.argv[i]
+        i += 1
+
+    if inputPath is None:
+        print("Error: no input file given.")
+        exit(1)
+
+    if outputPath is None:
+        print("No output directory given. Will only do data checking.")
+
+    if os.path.isdir(inputPath):
+        extractExtdata(inputPath, outputPath, saveId)
         exit(0)
 
-    image = unwrapDIFF(sys.argv[1])
+    image = unwrapDIFF(inputPath, saveType=saveType,
+                       saveId=saveId, saveSubId=saveSubId)
 
-    if output is not None:
-        output_file = open(output, "wb")
+    if outputPath is not None:
+        output_file = open(outputPath, "wb")
         output_file.write(image)
         output_file.close()
 

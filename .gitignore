@@ -124,3 +124,5 @@ Thumbs.db
 # Temp
 temp/
 
+# Don't leak secrets
+secrets.py
