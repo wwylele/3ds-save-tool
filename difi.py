@@ -15,8 +15,8 @@ class PartEntry(object):
         # Reads DIFI header
         DIFI, ver, \
             IVFCOff, IVFCSize, DPFSOff, DPFSSize, hashOff, hashSize, \
-            isData, self.DPFSL1Selector, zero, self.IVFCL4OffExt \
-            = struct.unpack('<IIQQQQQQBBHQ', raw[0:0x44])
+            isData, self.DPFSL1Selector, self.IVFCL4OffExt \
+            = struct.unpack('<IIQQQQQQBB2xQ', raw[0:0x44])
 
         if DIFI != 0x49464944:
             print("Error: Wrong DIFI magic")
@@ -45,7 +45,7 @@ class PartEntry(object):
             self.IVFCL3Off, self.IVFCL3Size, IVFCL3BlockSize, \
             self.IVFCL4Off, self.IVFCL4Size, IVFCL4BlockSize, \
             unknown = struct.unpack(
-                '<IIQQQQQQQQQQQQQQ', raw[IVFCOff: (IVFCOff + IVFCSize)])
+                '<IIQQQI4xQQI4xQQI4xQQI4xQ', raw[IVFCOff: (IVFCOff + IVFCSize)])
 
         if IVFC != 0x43465649:
             print("Error: Wrong IVFC magic")
@@ -72,7 +72,7 @@ class PartEntry(object):
             self.DPFSL1Off, self.DPFSL1Size, DPFSL1BlockSize, \
             self.DPFSL2Off, self.DPFSL2Size, DPFSL2BlockSize, \
             self.DPFSL3Off, self.DPFSL3Size, DPFSL3BlockSize \
-            = struct.unpack('<IIQQQQQQQQQ', raw[DPFSOff: (DPFSOff + DPFSSize)])
+            = struct.unpack('<IIQQI4xQQI4xQQI4x', raw[DPFSOff: (DPFSOff + DPFSSize)])
 
         if DPFS != 0x53465044:
             print("Error: Wrong DPFS magic")

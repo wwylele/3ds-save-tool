@@ -14,46 +14,39 @@ def trimBytes(bs):
 class Header(object):
     def __init__(self, raw, hasData):
         x00, self.blockSize, \
-            self.dirHashTableOff, self.dirHashTableSize, self.dirHashTableUnk, \
-            self.fileHashTableOff, self.fileHashTableSize, self.fileHashTableUnk, \
-            self.fatOff, self.fatSize, self.fatUnk, \
-            self.dataRegionOff, self.dataRegionSize, self.dataRegionUnk, \
-            = struct.unpack('<IIQIIQIIQIIQII',
-                            raw[0: 0x48])
+            self.dirHashTableOff, self.dirHashTableSize, \
+            self.fileHashTableOff, self.fileHashTableSize, \
+            self.fatOff, self.fatSize, \
+            self.dataRegionOff, self.dataRegionSize, \
+            = struct.unpack('<IIQI4xQI4xQI4xQI4x', raw[0: 0x48])
 
         if x00 != 0:
             print("Warning: unknown 0 = 0x%X in filesystem header" % x00)
 
         print("Info: dirHashTableSize = %d" % self.dirHashTableSize)
-        print("Info: dirHashTableUnk = %d" % self.dirHashTableUnk)
         print("Info: fileHashTableSize = %d" % self.fileHashTableSize)
-        print("Info: fileHashTableUnk = %d" % self.fileHashTableUnk)
         print("Info: fatSize = %d" % self.fatSize)
-        print("Info: fatUnk = %d" % self.fatUnk)
         print("Info: dataRegionSize = %d" % self.dataRegionSize)
-        print("Info: dataRegionUnk = %d" % self.dataRegionUnk)
         if self.fatSize != self.dataRegionSize:
             printf("Warning: fatSize != dataRegionSize")
 
         if not hasData:
-            self.dirTableBlockIndex, self.dirTableBlockCount, self.dirMaxCount, self.dirUnk, \
-                self.fileTableBlockIndex, self.fileTableBlockCount, self.fileMaxCount, self.fileUnk \
-                = struct.unpack('<IIIIIIII', raw[0x48:0x68])
+            self.dirTableBlockIndex, self.dirTableBlockCount, self.dirMaxCount, \
+                self.fileTableBlockIndex, self.fileTableBlockCount, self.fileMaxCount \
+                = struct.unpack('<III4xIII4x', raw[0x48:0x68])
             self.dirTableOff = 0
             self.fileTableOff = 0
             self.tableInDataRegion = True
             print("Info: dirTableBlockCount = %d" % self.dirTableBlockCount)
             print("Info: fileTableBlockCount = %d" % self.fileTableBlockCount)
         else:
-            self.dirTableOff, self.dirMaxCount, self.dirUnk, \
-                self.fileTableOff, self.fileMaxCount, self.fileUnk, \
-                = struct.unpack('<QIIQII', raw[0x48:0x68])
+            self.dirTableOff, self.dirMaxCount, \
+                self.fileTableOff, self.fileMaxCount, \
+                = struct.unpack('<QI4xQI4x', raw[0x48:0x68])
             self.tableInDataRegion = False
 
         print("Info: dirMaxCount = %d" % self.dirMaxCount)
-        print("Info: dirUnk = %d" % self.dirUnk)
         print("Info: fileMaxCount = %d" % self.fileMaxCount)
-        print("Info: fileUnk = %d" % self.fileUnk)
 
 
 class HashableEntry(object):
@@ -112,9 +105,9 @@ class FileEntry(HashableEntry):
     def __init__(self, raw):
         # Reads normal entry data
         self.parentIndex, self.name, \
-            self.nextIndex, self.u1, self.blockIndex, self.size, \
+            self.nextIndex, self.blockIndex, self.size, \
             self.u2, self.nextCollision \
-            = struct.unpack('<I16sIIIQII', raw)
+            = struct.unpack('<I16sI4xIQII', raw)
 
         # for extdata
         self.uniqueId = self.size
@@ -138,21 +131,20 @@ class FileEntry(HashableEntry):
             self.printDummyEntry(i)
         else:
             print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
-                  " size=%10d block=%5d unk1=%10d unk2=%10d" % (
+                  " size=%10d block=%5d unknown=%10d" % (
                       i, self.parentIndex, self.getName(),
                       self.nextIndex, self.nextCollision,
-                      self.size, self.blockIndex,
-                      self.u1, self.u2))
+                      self.size, self.blockIndex, self.u2))
 
     def printEntryAsExtdata(self, i):
         if self.isDummy:
             self.printDummyEntry(i)
         else:
             print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
-                  " ID=0x%016X unk1=%10d unk2=%10d" % (
+                  " ID=0x%016X unknown=%10d" % (
                       i, self.parentIndex, self.getName(),
                       self.nextIndex, self.nextCollision,
-                      self.uniqueId, self.u1, self.u2))
+                      self.uniqueId, self.u2))
 
 
 class FATEntry(object):
