@@ -21,4 +21,4 @@ Usage:
 
  - `python diff-extract.py <Extdata dir> [Output dir]`
 
-    Prints information of extdata stored in `<Extdata dir>` (the directory `extdata/<ExtdataID-High>/<ExtdataID-low>/00000000`) and extract its sub files to `[Output dir]` if given.
+    Prints information of extdata stored in `<Extdata dir>` (the directory `extdata/<ExtdataID-High>/<ExtdataID-low>`) and extract its sub files to `[Output dir]` if given.

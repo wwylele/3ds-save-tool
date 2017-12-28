@@ -35,7 +35,6 @@ A DIFF file consists of the following components
 
 Note:
  - Among the two partition discriptors, only one is active at one time. For a new-created file, it is possible that the inactive one contains invalid data.
- -
 
 ## AES CMAC Header
  _TODO_ :thinking:
@@ -68,7 +67,7 @@ A partition descriptor contains contains the following components:
  - DPFS descriptor
  - Partition Hash
 
-These partitions function in exactly the same way as those in
+These components function in exactly the same way as those in
 [DISA file](DISA.md#Partition_Table_&_Partition_Entry).
 
 ## Partition

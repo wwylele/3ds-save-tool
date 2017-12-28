@@ -111,9 +111,9 @@ def trimBytes(bs):
 
 
 def extractExtdata(extdataDir, outputDir, saveId=None):
-    def extdataFileById(id):
-        return os.path.join(extdataDir, "%08x" % id)
-    vsxe = unwrapDIFF(extdataFileById(1), saveType="extdata",
+    def extdataFileById(idHigh, idLow):
+        return os.path.join(extdataDir, "%08x" % idHigh, "%08x" % idLow)
+    vsxe = unwrapDIFF(extdataFileById(0, 1), saveType="extdata",
                       saveId=saveId, saveSubId=1)
     # Reads VSXE header
     VSXE, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00, \
@@ -186,8 +186,12 @@ def extractExtdata(extdataDir, outputDir, saveId=None):
 
     def extFileDumper(fileEntry, file, index):
         print("Extracting %s" % fileEntry.getName())
-        content = unwrapDIFF(extdataFileById(index + 1), expectedUniqueId=fileEntry.uniqueId,
-                             saveType="extdata", saveId=saveId, saveSubId=index + 1)
+        fileId = index + 1
+        dirCapacity = 126  # ???
+        idHigh = fileId // dirCapacity
+        idLow = fileId % dirCapacity
+        content = unwrapDIFF(extdataFileById(idHigh, idLow), expectedUniqueId=fileEntry.uniqueId,
+                             saveType="extdata", saveId=saveId, saveSubId=(idHigh << 32) | idLow)
         if file is not None:
             file.write(content)
 
@@ -202,7 +206,7 @@ def main():
         print("")
         print("Arguments:")
         print("  input            A DIFF file or an extdata directory")
-        print("       (extdata directory is extdata/<ExtdataID-High>/<ExtdataID-low>/00000000)")
+        print("       (extdata directory is extdata/<ExtdataID-High>/<ExtdataID-low>)")
         print("  output           The directory for storing extracted files")
         print("")
         print("The following arguments are optional and are only needed for CMAC verification.")
