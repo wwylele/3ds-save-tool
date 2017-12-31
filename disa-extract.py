@@ -24,6 +24,27 @@ def getDigestBlock(saveType, saveId, header):
     return b"CTR-SIGN" + struct.pack("<Q", saveId) + sav0Block
 
 
+def cryptoUnwrap(disa, saveType, saveId, key):
+    if saveType != "sd":
+        print("Error: only SD save supports decryption.")
+        return None
+
+    if saveId is None:
+        print("Error: ID needed to decrypt the save.")
+        return None
+
+    if key is None:
+        print("No enough secrets provided to decrypt.")
+        return None
+
+    high = saveId >> 32
+    low = saveId & 0xFFFFFFFF
+    path = "/title/%08x/%08x/data/00000001.sav" % (high, low)
+
+    import sd_decrypt
+    return sd_decrypt.DecryptSdFile(disa, path, key)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: %s input [output] [OPTIONS]" % sys.argv[0])
@@ -32,18 +53,21 @@ def main():
         print("  input            A DISA file")
         print("  output           The directory for storing extracted files")
         print("")
-        print("The following arguments are optional and are only needed for CMAC verification.")
+        print("The following arguments are optional and needed for CMAC verification.")
         print("You need to provide secrets.py to enable CMAC verification.")
-        print(
-            "  -sd              Specify that the DISA file is a save file stored on SD card")
-        print("  -nand            Specify that the DISA file is a save file stored on NAND")
+        print("  -sd              Specify that the DISA file is a SD save file")
+        print("  -nand            Specify that the DISA file is a NAND save file")
         print("  -id ID           The save ID of the file in hex")
+        print("Decryption for SD save is also supported by the following option")
+        print("  -decrypt         Decrypt SD save. Requires -sd and -id arguments")
+
         exit(1)
 
     inputPath = None
     outputPath = None
     saveId = None
     saveType = None
+    decrypt = False
 
     i = 1
     while i < len(sys.argv):
@@ -56,6 +80,8 @@ def main():
             saveType = "nand"
         elif sys.argv[i] == "-card":
             saveType = "card"
+        elif sys.argv[i] == "-decrypt":
+            decrypt = True
         else:
             if inputPath is None:
                 inputPath = sys.argv[i]
@@ -71,6 +97,12 @@ def main():
 
     secretsDb = secrets.Secrets()
     keyEngine = key_engine.KeyEngine(secretsDb)
+
+    if decrypt:
+        disa = cryptoUnwrap(disa, saveType, saveId,
+                            keyEngine.getKeySdDecrypt())
+        if disa is None:
+            exit(1)
 
     Cmac = disa.read(0x10)
     disa.seek(0x100, os.SEEK_SET)

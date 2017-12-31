@@ -17,3 +17,9 @@ class KeyEngine(object):
             return scrambleKey(self.secrets.key0x30X, self.secrets.keyMovable, self.secrets.keyConst)
         except AttributeError:
             return None
+
+    def getKeySdDecrypt(self):
+        try:
+            return scrambleKey(self.secrets.key0x34X, self.secrets.keyMovable, self.secrets.keyConst)
+        except AttributeError:
+            return None

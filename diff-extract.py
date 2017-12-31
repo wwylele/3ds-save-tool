@@ -17,12 +17,51 @@ except:
         pass
 
 
+def cryptoUnwrap(diff, saveType, saveId, saveSubId, key):
+    if saveId is None:
+        print("Error: ID needed to decrypt the save.")
+        return None
+
+    if key is None:
+        print("No enough secrets provided to decrypt.")
+        return None
+
+    if saveType is None:
+        print("Error: save type needed to decrypt the save.")
+        return None
+    elif saveType == "extdata":
+        if saveSubId is None:
+            print("Error: sub ID needed to decrypt the save.")
+            return None
+        high = saveId >> 32
+        low = saveId & 0xFFFFFFFF
+        subHigh = saveSubId >> 32
+        subLow = saveSubId & 0xFFFFFFFF
+        path = "/extdata/%08x/%08x/%08x/%08x" % (high, low, subHigh, subLow)
+    elif saveType == "titledb":
+        if saveId == 2:
+            fileName = "title.db"
+        elif saveId == 3:
+            fileName = "import.db"
+        path = "/dbs/" + fileName
+
+    import sd_decrypt
+    return sd_decrypt.DecryptSdFile(diff, path, key)
+
+
 def unwrapDIFF(filePath, expectedUniqueId=None, saveType=None, saveId=None,
-               saveSubId=None):
+               saveSubId=None, decrypt=False):
     diff = open(filePath, 'rb')
 
     secretsDb = secrets.Secrets()
     keyEngine = key_engine.KeyEngine(secretsDb)
+
+    if decrypt:
+        diff = cryptoUnwrap(diff, saveType, saveId,
+                            saveSubId, keyEngine.getKeySdDecrypt())
+        if diff is None:
+            exit(1)
+
     key = keyEngine.getKeySdNandCmac()
 
     Cmac = diff.read(0x10)
@@ -110,11 +149,11 @@ def trimBytes(bs):
     return bs
 
 
-def extractExtdata(extdataDir, outputDir, saveId=None):
+def extractExtdata(extdataDir, outputDir, saveId, decrypt):
     def extdataFileById(idHigh, idLow):
         return os.path.join(extdataDir, "%08x" % idHigh, "%08x" % idLow)
     vsxe = unwrapDIFF(extdataFileById(0, 1), saveType="extdata",
-                      saveId=saveId, saveSubId=1)
+                      saveId=saveId, saveSubId=1, decrypt=decrypt)
     # Reads VSXE header
     VSXE, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00, \
         unk1, recentAction, unk2, recentId, unk3, recentPath \
@@ -191,7 +230,7 @@ def extractExtdata(extdataDir, outputDir, saveId=None):
         idHigh = fileId // dirCapacity
         idLow = fileId % dirCapacity
         content = unwrapDIFF(extdataFileById(idHigh, idLow), expectedUniqueId=fileEntry.uniqueId,
-                             saveType="extdata", saveId=saveId, saveSubId=(idHigh << 32) | idLow)
+                             saveType="extdata", saveId=saveId, saveSubId=(idHigh << 32) | idLow, decrypt=decrypt)
         if file is not None:
             file.write(content)
 
@@ -217,6 +256,10 @@ def main():
         print("  -id ID           The save ID of the file in hex")
         print("  -subid ID        The subfile ID of the file in hex")
         print("                   Only need for extdata subfile, except for Quota.dat")
+        print("Decryption for SD save is also supported by the following option")
+        print("  -decrypt         Decrypt SD save. Requires -extdata or -titledb options unless")
+        print("                   a extdata directory is given as the input. -id is also required")
+        print("                   --subid is required for single extdata file")
         exit(1)
 
     inputPath = None
@@ -224,6 +267,7 @@ def main():
     saveId = None
     saveSubId = None
     saveType = None
+    decrypt = False
 
     i = 1
     while i < len(sys.argv):
@@ -237,6 +281,8 @@ def main():
             saveType = "extdata"
         elif sys.argv[i] == "-titledb":
             saveType = "titledb"
+        elif sys.argv[i] == "-decrypt":
+            decrypt = True
         else:
             if inputPath is None:
                 inputPath = sys.argv[i]
@@ -252,11 +298,11 @@ def main():
         print("No output directory given. Will only do data checking.")
 
     if os.path.isdir(inputPath):
-        extractExtdata(inputPath, outputPath, saveId)
+        extractExtdata(inputPath, outputPath, saveId, decrypt)
         exit(0)
 
     image = unwrapDIFF(inputPath, saveType=saveType,
-                       saveId=saveId, saveSubId=saveSubId)
+                       saveId=saveId, saveSubId=saveSubId, decrypt=decrypt)
 
     if outputPath is not None:
         output_file = open(outputPath, "wb")
