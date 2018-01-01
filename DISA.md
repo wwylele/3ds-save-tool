@@ -66,7 +66,8 @@ The DISA header is located at 0x100 in the save file image.
 |-|-|-|
 |0x00|4|Magic "DISA"|
 |0x04|4|Magic 0x40000|
-|0x08|8|Partition count, 1 or 2|
+|0x08|4|Partition count, 1 or 2|
+|0x0C|4|Padding|
 |0x10|8|Secondary partition table offset|
 |0x18|8|Primary partition table offset|
 |0x20|8|Partition table size|
@@ -79,17 +80,11 @@ The DISA header is located at 0x100 in the save file image.
 |0x58|8|DATA partition offset|
 |0x60|8|DATA partition size|
 |0x68|1|Active table, 0 = primary, 1 = secondary|
-|0x69|3|Padding? :thinking:|
+|0x69|3|Padding|
 |0x6C|0x20|SHA-256 over the active table|
 |0x8C|0x74|Unused, might contain leftover data|
 
 This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header are relative to the beginning of the, except for partition entry offsets, which are relative to the beginning of the (active) partition table.
-
-The unknown field 0x69 usually is 0. However, other values have been observed:
- - Pokemon Sun and Super Smash Bros. has 0x000001 (No DATA partition)
- - ニンテンドービデオ(00040000 0004A900) has 0x080A8E (Has DATA partition)
-
-It is said on 3dbrew that the upper 31 bits of word 0x68 function as "filebase offset from DATA partition", but this doesn't seem true.
 
 ## Partition Table & Partition Entry
 A partition table contains 1 or 2 entries, depending on the existence of DATA partition. A partition entry contains the following components:

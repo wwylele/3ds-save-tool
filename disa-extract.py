@@ -140,8 +140,8 @@ def main():
         dataPartEntryOff, dataPartEntrySize, \
         savePartOff, savePartSize, \
         dataPartOff, dataPartSize, \
-        activeTable, unk1, unk2, tableHash = struct.unpack(
-            '<IIQQQQQQQQQQQQBBH32s116x', header)
+        activeTable, tableHash = struct.unpack(
+            '<III4xQQQQQQQQQQQB3x32s116x', header)
 
     if DISA != 0x41534944:
         print("Error: Not a DISA format")
@@ -168,10 +168,6 @@ def main():
     else:
         print("Error: Wrong active table ID %d" % activeTable)
         exit(1)
-
-    Unknown = unk1 + unk2 * 256
-    if Unknown != 0:
-        print("Warning: Unknown = 0x%X" % Unknown)
 
     # Verify partition table hash
     disa.seek(partTableOff, os.SEEK_SET)
