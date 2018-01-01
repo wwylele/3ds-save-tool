@@ -3,7 +3,7 @@
 ## Scope of This Documentation
 This documentation describes the DIFF container format that is used for various purposes in 3DS SD/NAND filesystem
 
-However, this documentation only describe plaintext DIFF format Any encryption layer on top of it, such as SD file encryption or NAND partition encryption, is not covered. this documentation doesn't cover the file format inside the container either, because its format varies for different purposes. For the detail of different inner formats, please refer to their own documentation.
+However, this documentation only describe plaintext DIFF format. Any encryption layer on top of it, such as SD file encryption or NAND partition encryption, is not covered. this documentation doesn't cover the file format inside the container either, because its format varies for different purposes. For the detail of different inner formats, please refer to their own documentation.
 
 Generally speaking, consider DIFF format as a container of an arbitrary file. The only purpose of this container format is to provide verification and atomic I/O.
 
@@ -34,7 +34,7 @@ A DIFF file consists of the following components
  - Partition
 
 Note:
- - Among the two partition discriptors, only one is active at one time. For a new-created file, it is possible that the inactive one contains invalid data.
+ - Among the two partition descriptors, only one is active at one time. For a new-created file, it is possible that the inactive one contains invalid data.
 
 ## AES CMAC Header
  _TODO_ :thinking:

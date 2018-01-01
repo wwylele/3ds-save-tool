@@ -29,17 +29,20 @@ All files in this strucuture are [DIFF containers](DIFF.md). File `Quota.dat` is
 
 ## Quota File
 
-The inner data of `Quota.dat` is 0x48 bytes with the following format. The exact function of this file is unclear.
+The inner data of `Quota.dat` is 0x48 bytes with the following format. The exact function of this file is unclear. :thinking:
 
 |Offset|Length|Description|
 |-|-|-|
 |0x00|4|Magic "QUOT"|
 |0x04|4|Magic 0x30000|
-|0x08|4|Always 126. Probably physical directory capacity. See the next section for mor information.|
+|0x08|4|0x1000, block size?|
+|0x0C|4|Always 126. Probably physical directory capacity. See the next section for mor information.|
 |...||The meaning of other fields is unknown|
 
 
 ## Physical Directory Capacity
+
+:thinking:
 
 A physical directory in an extdata (those `00000000` and `00000001` directories, not the virtual directories in the extdata filesystem) seems to have a maximum number of files it can contain. For SD extdata, this maximum number seems to be hard-coded as 126. For NAND extdata, the number is probably indicated by a field in Quota.dat, which is, again, always 126 as observed. 3DS FS tries to put all files in directory `00000000` as possible, and only when more than 126 files needed to add, a second directory `00000001` and so on are created. However, few extdata have such amount files to store (wwylele: _Super Mario Maker_ is a known one to have more than 126 files in its extdata), so the behavior lacks of use cases to confirm.
 
