@@ -62,8 +62,8 @@ The inner data of `00000000/00000001` DIFF container consists of the following c
 |0x04|4|Magic 0x30000|
 |0x08|8|Filesystem Information offset (0x138)|
 |0x10|8|Image size in blocks|
-|0x18|4/8?|Image block size|
-|0x1C|4|Unknown:thinking:|
+|0x18|4|Image block size|
+|0x1C|4|Padding|
 |0x20|8|Unknown:thinking:|
 |0x28|8|Recent action:thinking:|
 |0x30|8|Recent file ID:thinking:|

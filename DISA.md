@@ -71,10 +71,10 @@ The DISA header is located at 0x100 in the save file image.
 |0x10|8|Secondary partition table offset|
 |0x18|8|Primary partition table offset|
 |0x20|8|Partition table size|
-|0x28|8|SAVE partition entry offset in the partition table|
-|0x30|8|SAVE partition entry size|
-|0x38|8|DATA partition entry offset in the partition table|
-|0x40|8|DATA partition entry size|
+|0x28|8|SAVE partition descriptor offset in the partition table|
+|0x30|8|SAVE partition descriptor size|
+|0x38|8|DATA partition descriptor offset in the partition table|
+|0x40|8|DATA partition descriptor size|
 |0x48|8|SAVE partition offset|
 |0x50|8|SAVE partition size|
 |0x58|8|DATA partition offset|
@@ -84,17 +84,17 @@ The DISA header is located at 0x100 in the save file image.
 |0x6C|0x20|SHA-256 over the active table|
 |0x8C|0x74|Unused, might contain leftover data|
 
-This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header are relative to the beginning of the, except for partition entry offsets, which are relative to the beginning of the (active) partition table.
+This header defines the rest components of the file (Partition tables, SAVE partition and DATA partitions). All offsets in this header are relative to the beginning of the, except for partition descriptor offsets, which are relative to the beginning of the (active) partition table.
 
-## Partition Table & Partition Entry
-A partition table contains 1 or 2 entries, depending on the existence of DATA partition. A partition entry contains the following components:
+## Partition Table & Partition Descriptor
+A partition table contains 1 or 2 descriptors, depending on the existence of DATA partition. A partition descriptor contains the following components:
  - DIFI header
  - IVFC descriptor
  - DPFS descriptor
  - Partition Hash
 
 ### DIFI Header
-The DIFI header locates at the beginning of a partition entry.
+The DIFI header locates at the beginning of a partition descriptor.
 
 |Offset|Length|Description|
 |-|-|-|
@@ -111,7 +111,7 @@ The DIFI header locates at the beginning of a partition entry.
 |0x3A|2|Padding|
 |0x3C|8|(For DATA partition only) IVFC level 4 offset|
 
-This header defines the rest components of the partition (IVFC descriptor, DPFS descriptor and partition hash). All offsets are relative to the beginning of the partition entry, except for `IVFC level 4 offset`, which is related to the beginning of the (DATA) partition.
+This header defines the rest components of the partition (IVFC descriptor, DPFS descriptor and partition hash). All offsets are relative to the beginning of the partition descriptor, except for `IVFC level 4 offset`, which is related to the beginning of the (DATA) partition.
 
 ### IVFC Descriptor
 
@@ -201,7 +201,7 @@ Effectively, the active data is scattered among the two level 3 chunk. One can a
 ### IVFC Tree
 The IVFC tree is used for data verification. It is very similar to the IVFC tree in RomFS, except it has an additional level in save file. For level 1, 2 and 3, each level is a list of SHA-256 hash, of which each corresponding to a block of the next level, padded to block size (the block size of the next level is defined in the IVFC descriptor).
 
-The partition hash (a.k.a "master hash") in the partition entry can be seen as IVFC level 0, which hashes level 1 following the same rule. The partition hash is usually 0x20 long consisting only one hash. This is because most save file is not large enough to have multiple hashes on the top level.
+The partition hash (a.k.a "master hash") in the partition descriptor can be seen as IVFC level 0, which hashes level 1 following the same rule. The partition hash is usually 0x20 long consisting only one hash. This is because most save file is not large enough to have multiple hashes on the top level.
 
 However, not all data are hashed - only ranges that have been written with valid data are properly hashed. It is even observed that one file in the filesystem (will be introduced later) can have part of its data unhashed. This happens when a file is create with a large size, but only part of the data is filled by File:Write, and FS will refuse to read the unwritten (unhashed) part, returning verification failure error. (This probably needs more test to confirm)
 
@@ -229,8 +229,8 @@ If the DATA image exists, data region is the whole DATA image; other wise, data 
 |0x04|4|Magic 0x40000|
 |0x08|8|Filesystem Information offset (0x20)|
 |0x10|8|Image size in blocks|
-|0x18|4/8?|Image block size|
-|0x1C|4|Unknown:thinking:|
+|0x18|4|Image block size|
+|0x1C|4|Padding|
 |||Below is Filesystem Information|
 |0x20|4|Unknown:thinking:|
 |0x24|4|Data region block size|
