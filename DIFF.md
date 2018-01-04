@@ -53,7 +53,7 @@ The DIFF header is located at 0x100 in the DIFF file image.
  |0x28|8|Partition size|
  |0x30|4|Active descriptor, 0 = primary, 1 = secondary|
  |0x34|0x20|SHA-256 over the active descriptor|
- |0x54|8|Unique DIFF Identifier|
+ |0x54|8|Unique DIFF identifier|
  |0x5C|0xA4|Unused, might contain leftover data|
 
 This header defines the rest components of the file. All offsets in this header is relative to the beginning of the file.

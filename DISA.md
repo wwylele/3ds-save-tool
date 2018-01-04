@@ -111,7 +111,7 @@ The DIFI header locates at the beginning of a partition descriptor.
 |0x3A|2|Padding|
 |0x3C|8|(For DATA partition only) IVFC level 4 offset|
 
-This header defines the rest components of the partition (IVFC descriptor, DPFS descriptor and partition hash). All offsets are relative to the beginning of the partition descriptor, except for `IVFC level 4 offset`, which is related to the beginning of the (DATA) partition.
+This header defines the rest components of the partition descriptor (IVFC descriptor, DPFS descriptor and partition hash). All offsets are relative to the beginning of the partition descriptor, except for `IVFC level 4 offset`, which is related to the beginning of the (DATA) partition.
 
 ### IVFC Descriptor
 
@@ -161,7 +161,7 @@ This header defines each level of IVFC tree (will explain below). All the offset
 This header defines each level of DPFS tree (will explain below). All the offsets are relative to the beginning of the partition.
 
 ### DIFI Hash
-This is SHA-256 hash over IVFC level 1, padded to level 1 block size. After the hash, there is additional unused 4 bytes. This 4 bytes are 0xFFFFFFFF in ciphertext.
+This is a SHA-256 hash list over IVFC level 1. See the IVFC tree section for detail. After the hash, there is additional unused 4 bytes. This 4 bytes are 0xFFFFFFFF in ciphertext.
 
 ## Partition
 The SAVE partition and the DATA partition has slightly different structures.
