@@ -11,7 +11,7 @@ import savefilesystem
 import key_engine
 
 try:
-    import secrets
+    from secrets import Secrets
 except:
     class Secrets(object):
         pass
@@ -95,7 +95,7 @@ def main():
 
     disa = open(inputPath, 'rb')
 
-    secretsDb = secrets.Secrets()
+    secretsDb = Secrets()
     keyEngine = key_engine.KeyEngine(secretsDb)
 
     if decrypt:
