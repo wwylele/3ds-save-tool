@@ -133,9 +133,9 @@ def unwrapDIFF(filePath, expectedUniqueId=None, saveType=None, saveId=None,
     # Reads and unwraps partition
     diff.seek(partOff, os.SEEK_SET)
     part = diff.read(partSize)
-    image, isData = difi.unwrap(partTable, part)
-    if isData:
-        print("Info: this is a DATA partition")
+    image, externalIVFCL4 = difi.unwrap(partTable, part)
+    if externalIVFCL4:
+        print("Info: external IVFC level 4")
 
     diff.close()
     return image

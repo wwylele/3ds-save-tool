@@ -136,10 +136,9 @@ def main():
     disa.seek(0x100, os.SEEK_SET)
     DISA, ver, \
         partCount, secPartTableOff, priPartTableOff, partTableSize, \
-        savePartEntryOff, savePartEntrySize, \
-        dataPartEntryOff, dataPartEntrySize, \
-        savePartOff, savePartSize, \
-        dataPartOff, dataPartSize, \
+        partADiscriptorOff, partADiscriptorSize, \
+        partBDiscriptorOff, partBDiscriptorSize, \
+        partAOff, partASize, partBOff, partBSize, \
         activeTable, tableHash = struct.unpack(
             '<III4xQQQQQQQQQQQB3x32s116x', header)
 
@@ -153,10 +152,10 @@ def main():
 
     if partCount == 1:
         hasData = False
-        print("Info: No DATA partition")
+        print("Info: No partition B")
     elif partCount == 2:
         hasData = True
-        print("Info: Has DATA partition")
+        print("Info: Has partition B")
     else:
         print("Error: Wrong partition count %d" % parCount)
         exit(1)
@@ -178,29 +177,29 @@ def main():
         exit(1)
 
     # Reads and unwraps SAVE image
-    saveEntry = partTable[savePartEntryOff:
-                          savePartEntryOff + savePartEntrySize]
-    disa.seek(savePartOff, os.SEEK_SET)
-    savePart = disa.read(savePartSize)
-    saveImage, saveImageIsData = difi.unwrap(saveEntry, savePart)
-    if saveImageIsData:
-        print("Warning: SAVE partition is marked as DATA")
+    partADescriptor = partTable[partADiscriptorOff:
+                                partADiscriptorOff + partADiscriptorSize]
+    disa.seek(partAOff, os.SEEK_SET)
+    partA = disa.read(partASize)
+    partAInner, externalIVFCL4 = difi.unwrap(partADescriptor, partA)
+    if externalIVFCL4:
+        print("Warning: partition A has an external IVFC level 4")
 
     # Reads and unwraps DATA image
     if hasData:
-        dataEntry = partTable[dataPartEntryOff:
-                              dataPartEntryOff + dataPartEntrySize]
-        disa.seek(dataPartOff, os.SEEK_SET)
-        dataPart = disa.read(dataPartSize)
-        dataRegion, dataRegionIsData = difi.unwrap(dataEntry, dataPart)
-        if not dataRegionIsData:
-            print("Warning: DATA partition is not marked as DATA")
+        partBDescriptor = partTable[partBDiscriptorOff:
+                                    partBDiscriptorOff + partBDiscriptorSize]
+        disa.seek(partBOff, os.SEEK_SET)
+        partB = disa.read(partBSize)
+        dataRegion, externalIVFCL4 = difi.unwrap(partBDescriptor, partB)
+        if not externalIVFCL4:
+            print("Warning: partition B does not have an external IVFC level 4")
 
     disa.close()
 
     # Reads SAVE header
     SAVE, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00 \
-        = struct.unpack('<IIQQII', saveImage[0:0x20])
+        = struct.unpack('<IIQQII', partAInner[0:0x20])
 
     if SAVE != 0x45564153:
         print("Error: Wrong SAVE magic")
@@ -214,35 +213,35 @@ def main():
         print("Warning: unknown 0 = 0x%X in SAVE header" % x00)
 
     fsHeader = savefilesystem.Header(
-        saveImage[filesystemHeaderOff:filesystemHeaderOff + 0x68], hasData)
+        partAInner[filesystemHeaderOff:filesystemHeaderOff + 0x68], hasData)
 
     if not hasData:
-        dataRegion = saveImage[
+        dataRegion = partAInner[
             fsHeader.dataRegionOff: fsHeader.dataRegionOff +
             fsHeader.dataRegionSize * fsHeader.blockSize]
 
     # Parses hash tables
     dirHashTable = savefilesystem.getHashTable(fsHeader.dirHashTableOff,
                                                fsHeader.dirHashTableSize,
-                                               saveImage)
+                                               partAInner)
 
     fileHashTable = savefilesystem.getHashTable(fsHeader.fileHashTableOff,
                                                 fsHeader.fileHashTableSize,
-                                                saveImage)
+                                                partAInner)
 
     # Parses FAT
-    fat = savefilesystem.FAT(fsHeader, saveImage)
+    fat = savefilesystem.FAT(fsHeader, partAInner)
 
     # Parses directory & file entry table
     dirList = savefilesystem.getDirList(
-        fsHeader, saveImage, dataRegion, fat)
+        fsHeader, partAInner, dataRegion, fat)
 
     print("Directory list:")
     for i in range(len(dirList)):
         dirList[i].printEntry(i)
 
     fileList = savefilesystem.getFileList(
-        fsHeader, saveImage, dataRegion, fat)
+        fsHeader, partAInner, dataRegion, fat)
 
     print("File list:")
     for i in range(len(fileList)):

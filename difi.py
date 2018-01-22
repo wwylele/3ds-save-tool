@@ -4,8 +4,8 @@ import struct
 import hashlib
 
 
-class PartEntry(object):
-    """ Partition table entry
+class PartDiscriptor(object):
+    """ Partition discriptor
 
      Consists of DIFI header, IVFC descriptor,
      DPFS descriptor and partition hash.
@@ -15,7 +15,7 @@ class PartEntry(object):
         # Reads DIFI header
         DIFI, ver, \
             IVFCOff, IVFCSize, DPFSOff, DPFSSize, hashOff, hashSize, \
-            isData, self.DPFSL1Selector, self.IVFCL4OffExt \
+            externalIVFCL4, self.DPFSL1Selector, self.IVFCL4OffExt \
             = struct.unpack('<IIQQQQQQBB2xQ', raw[0:0x44])
 
         if DIFI != 0x49464944:
@@ -26,12 +26,12 @@ class PartEntry(object):
             print("Error: Wrong DIFI version")
             exit(1)
 
-        if isData == 0:
-            self.isData = False
-        elif isData == 1:
-            self.isData = True
+        if externalIVFCL4 == 0:
+            self.externalIVFCL4 = False
+        elif externalIVFCL4 == 1:
+            self.externalIVFCL4 = True
         else:
-            print("Error: Wrong isData value %d" % isData)
+            print("Error: Wrong externalIVFCL4 value %d" % externalIVFCL4)
             exit(1)
 
         if self.DPFSL1Selector > 1:
@@ -115,14 +115,14 @@ def applyDPFSLevel(selector, data, dataBlockSize):
         selectorPos += 4
 
 
-def unwrapDPFS(part, entry):
+def unwrapDPFS(part, discriptor):
     """ Reconstructs active data of the most inner DPFS level """
-    l1 = getDPFSLevel(part, entry.DPFSL1Off, entry.DPFSL1Size)
-    l2 = getDPFSLevel(part, entry.DPFSL2Off, entry.DPFSL2Size)
-    l3 = getDPFSLevel(part, entry.DPFSL3Off, entry.DPFSL3Size)
-    l1active = l1[entry.DPFSL1Selector]
-    l2active = applyDPFSLevel(l1active, l2, entry.DPFSL2BlockSize)
-    l3active = applyDPFSLevel(l2active, l3, entry.DPFSL3BlockSize)
+    l1 = getDPFSLevel(part, discriptor.DPFSL1Off, discriptor.DPFSL1Size)
+    l2 = getDPFSLevel(part, discriptor.DPFSL2Off, discriptor.DPFSL2Size)
+    l3 = getDPFSLevel(part, discriptor.DPFSL3Off, discriptor.DPFSL3Size)
+    l1active = l1[discriptor.DPFSL1Selector]
+    l2active = applyDPFSLevel(l1active, l2, discriptor.DPFSL2BlockSize)
+    l3active = applyDPFSLevel(l2active, l3, discriptor.DPFSL3BlockSize)
     return l3active
 
 
@@ -155,29 +155,30 @@ def applyIVFCLevel(hash, data, dataBlockSize):
     return output
 
 
-def unwrapIVFC(partActive, entry, l4=None):
+def unwrapIVFC(partActive, discriptor, l4):
     """ Poisons IVFC tree to the most inner level """
-    l1 = getIVFCLevel(partActive, entry.IVFCL1Off, entry.IVFCL1Size)
-    l2 = getIVFCLevel(partActive, entry.IVFCL2Off, entry.IVFCL2Size)
-    l3 = getIVFCLevel(partActive, entry.IVFCL3Off, entry.IVFCL3Size)
+    l1 = getIVFCLevel(partActive, discriptor.IVFCL1Off, discriptor.IVFCL1Size)
+    l2 = getIVFCLevel(partActive, discriptor.IVFCL2Off, discriptor.IVFCL2Size)
+    l3 = getIVFCLevel(partActive, discriptor.IVFCL3Off, discriptor.IVFCL3Size)
     if l4 is None:
-        l4 = getIVFCLevel(partActive, entry.IVFCL4Off, entry.IVFCL4Size)
+        l4 = getIVFCLevel(partActive, discriptor.IVFCL4Off,
+                          discriptor.IVFCL4Size)
 
-    l1p = applyIVFCLevel(entry.hash, l1, entry.IVFCL1BlockSize)
-    l2p = applyIVFCLevel(l1p, l2, entry.IVFCL2BlockSize)
-    l3p = applyIVFCLevel(l2p, l3, entry.IVFCL3BlockSize)
-    l4p = applyIVFCLevel(l3p, l4, entry.IVFCL4BlockSize)
+    l1p = applyIVFCLevel(discriptor.hash, l1, discriptor.IVFCL1BlockSize)
+    l2p = applyIVFCLevel(l1p, l2, discriptor.IVFCL2BlockSize)
+    l3p = applyIVFCLevel(l2p, l3, discriptor.IVFCL3BlockSize)
+    l4p = applyIVFCLevel(l3p, l4, discriptor.IVFCL4BlockSize)
 
     return l4p
 
 
-def unwrap(entryRaw, partitionRaw):
-    """ Unwraps DPFS and IVFC tree of a partition according to the partiton entry """
-    entry = PartEntry(entryRaw)
-    active = unwrapDPFS(partitionRaw, entry)
-    if entry.isData:
-        IVFCL4 = partitionRaw[entry.IVFCL4OffExt:
-                              entry.IVFCL4OffExt + entry.IVFCL4Size]
+def unwrap(discriptorRaw, partitionRaw):
+    """ Unwraps DPFS and IVFC tree of a partition according to the partiton discriptor """
+    discriptor = PartDiscriptor(discriptorRaw)
+    active = unwrapDPFS(partitionRaw, discriptor)
+    if discriptor.externalIVFCL4:
+        IVFCL4 = partitionRaw[discriptor.IVFCL4OffExt:
+                              discriptor.IVFCL4OffExt + discriptor.IVFCL4Size]
     else:
         IVFCL4 = None
-    return (unwrapIVFC(active, entry, IVFCL4), entry.isData)
+    return (unwrapIVFC(active, discriptor, IVFCL4), discriptor.externalIVFCL4)
