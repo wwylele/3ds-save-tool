@@ -1,5 +1,7 @@
 # 3DS Extdata Format
 
+**This document is an archived old one. Please refer to https://www.3dbrew.org/wiki/DISA_and_DIFF and https://www.3dbrew.org/wiki/Extdata for the newest one.**
+
 ## Scope of This Documentation
 
 This documentation describes the special save format, called "extdata" for 3DS contained in SD and NAND. It does not cover normal save data or any other type of saves. All extdata uses DIFF container format, which is described [here](DIFF.md), and this documentation will skip the DIFF container part, and go directly into the inner data format specific to extdata.

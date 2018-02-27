@@ -1,5 +1,7 @@
 # DIFF format
 
+**This document is an archived old one. Please refer to https://www.3dbrew.org/wiki/DISA_and_DIFF for the newest one.**
+
 ## Scope of This Documentation
 This documentation describes the DIFF container format that is used for various purposes in 3DS SD/NAND filesystem
 

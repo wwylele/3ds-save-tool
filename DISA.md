@@ -1,5 +1,7 @@
 # 3DS Save Format
 
+**This document is an archived old one. Please refer to https://www.3dbrew.org/wiki/DISA_and_DIFF and https://www.3dbrew.org/wiki/Savegames for the newest one.**
+
 ## Scope of This Documentation
 This documentation describes the format for 3DS normal save contained in cartridge, SD and NAND. It does not cover extdata or any other type of saves.
 
