@@ -259,7 +259,7 @@ def main():
         print("Decryption for SD save is also supported by the following option")
         print("  -decrypt         Decrypt SD save. Requires -extdata or -titledb options unless")
         print("                   a extdata directory is given as the input. -id is also required")
-        print("                   --subid is required for single extdata file")
+        print("                   -subid is required for single extdata file")
         exit(1)
 
     inputPath = None
