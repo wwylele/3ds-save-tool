@@ -28,7 +28,7 @@ class Header(object):
         print("Info: fatSize = %d" % self.fatSize)
         print("Info: dataRegionSize = %d" % self.dataRegionSize)
         if self.fatSize != self.dataRegionSize:
-            printf("Warning: fatSize != dataRegionSize")
+            print("Warning: fatSize != dataRegionSize")
 
         if not hasData:
             self.dirTableBlockIndex, self.dirTableBlockCount, self.dirMaxCount, \

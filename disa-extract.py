@@ -157,7 +157,7 @@ def main():
         hasData = True
         print("Info: Has partition B")
     else:
-        print("Error: Wrong partition count %d" % parCount)
+        print("Error: Wrong partition count %d" % partCount)
         exit(1)
 
     if activeTable == 0:

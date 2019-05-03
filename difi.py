@@ -35,7 +35,7 @@ class PartDiscriptor(object):
             exit(1)
 
         if self.DPFSL1Selector > 1:
-            print("Error: Wrong DPFSL1Selector value %d" % DPFSL1Selector)
+            print("Error: Wrong DPFSL1Selector value %d" % self.DPFSL1Selector)
             exit(1)
 
         # Reads IVFC descriptor
