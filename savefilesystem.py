@@ -98,6 +98,9 @@ class DirEntry(HashableEntry):
                       self.firstFileIndex,
                       self.nextCollision, self.unknown))
 
+    def entrySize():
+        return 0x28
+
 
 class FileEntry(HashableEntry):
     """ File table entry """
@@ -145,6 +148,94 @@ class FileEntry(HashableEntry):
                       i, self.parentIndex, self.getName(),
                       self.nextIndex, self.nextCollision,
                       self.uniqueId, self.u2))
+
+    def entrySize():
+        return 0x30
+
+
+class TdbHashableEntry(object):
+    def getHash(self):
+        hash = self.parentIndex ^ 0x091A2B3C
+        hash = ((hash >> 1) | (hash << 31)) & 0xFFFFFFFF
+        hash ^= self.titleId & 0xFFFFFFFF
+        hash = ((hash >> 1) | (hash << 31)) & 0xFFFFFFFF
+        hash ^= self.titleId >> 32
+        return hash
+
+
+class TdbDirEntry(TdbHashableEntry):
+    """ Tite database directory table entry """
+
+    def __init__(self, raw):
+        # Reads normal entry data
+        self.parentIndex, self.nextIndex, self.firstDirIndex, self.firstFileIndex, \
+            self.unk1, self.unk2, self.unk3, self.nextCollision \
+            = struct.unpack('<IIIIIIII', raw)
+
+        # Reads dummy entry data
+        self.count, self.maxCount, self.nextDummyIndex \
+            = struct.unpack('<II20xI', raw)
+
+        self.titleId = 0
+
+        self.isDummy = False  # will be set later
+
+    def getName(self):
+        return ""
+
+    def printEntry(self, i):
+        if self.isDummy:
+            print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
+                i, self.count, self.maxCount,
+                self.nextDummyIndex))
+        else:
+            print("[%3d]parent=%3d '%16s' next=%3d child=%3d"
+                  " file=%3d collision=%3d unk1=%10d unk2=%10d unk3=%10d" % (
+                      i, self.parentIndex, self.getName(),
+                      self.nextIndex, self.firstDirIndex,
+                      self.firstFileIndex,
+                      self.nextCollision, self.unk1, self.unk2, self.unk3))
+
+    def entrySize():
+        return 0x20
+
+
+class TdbFileEntry(TdbHashableEntry):
+    """ Title databse file table entry """
+
+    def __init__(self, raw):
+        # Reads normal entry data
+        self.parentIndex, self.titleId, \
+            self.nextIndex, self.unk1, self.blockIndex, self.size, \
+            self.unk2, self.unk3, self.nextCollision \
+            = struct.unpack('<IQIIIQIII', raw)
+
+        # Reads dummy entry data
+        self.count, self.maxCount, self.nextDummyIndex \
+            = struct.unpack('<II32xI', raw)
+
+        self.isDummy = False  # will be set later
+
+    def getName(self):
+        return "%016X" % self.titleId
+
+    def printDummyEntry(self, i):
+        print("[%3d]~~Dummy~~ count=%3d max=%3d next=%3d" % (
+            i, self.count, self.maxCount,
+            self.nextDummyIndex))
+
+    def printEntry(self, i):
+        if self.isDummy:
+            self.printDummyEntry(i)
+        else:
+            print("[%3d]parent=%3d '%16s' next=%3d collision=%3d"
+                  " size=%10d block=%5d unk1=%10d unk2=%10d unk3=%10d" % (
+                      i, self.parentIndex, self.getName(),
+                      self.nextIndex, self.nextCollision,
+                      self.size, self.blockIndex, self.unk1, self.unk2, self.unk3))
+
+    def entrySize():
+        return 0x2C
 
 
 class FATEntry(object):
@@ -271,36 +362,44 @@ def getAllocatedList(dataRegion, blockSize, fat, index, count):
     return result
 
 
-def getDirList(fsHeader, partitionImage, dataRegion, fat):
+def getDirList(fsHeader, partitionImage, dataRegion, fat, DirEntryT=DirEntry):
     offset = fsHeader.dirTableOff
     if fsHeader.tableInDataRegion:
         data = getAllocatedList(dataRegion, fsHeader.blockSize, fat,
                                 fsHeader.dirTableBlockIndex, fsHeader.dirTableBlockCount)
     else:
         data = partitionImage
-    dirList = [DirEntry(data[offset: offset + 0x28])]
+    dirList = [DirEntryT(data[offset: offset + DirEntryT.entrySize()])]
     dirCount = dirList[0].count
     for i in range(1, dirCount):
-        dirList.append(DirEntry(data[
-            offset + i * 0x28: offset + (i + 1) * 0x28]))
+        dirList.append(DirEntryT(data[
+            offset + i * DirEntryT.entrySize(): offset + (i + 1) * DirEntryT.entrySize()]))
     scanDummyEntry(dirList)
     return dirList
 
 
-def getFileList(fsHeader, partitionImage, dataRegion, fat):
+def getTdbDirList(fsHeader, dataRegion, fat):
+    return getDirList(fsHeader, None, dataRegion, fat, TdbDirEntry)
+
+
+def getFileList(fsHeader, partitionImage, dataRegion, fat, FileEntryT=FileEntry):
     offset = fsHeader.fileTableOff
     if fsHeader.tableInDataRegion:
         data = getAllocatedList(dataRegion, fsHeader.blockSize, fat,
                                 fsHeader.fileTableBlockIndex, fsHeader.fileTableBlockCount)
     else:
         data = partitionImage
-    fileList = [FileEntry(data[offset: offset + 0x30])]
+    fileList = [FileEntryT(data[offset: offset + FileEntryT.entrySize()])]
     fileCount = fileList[0].count
     for i in range(1, fileCount):
-        fileList.append(FileEntry(data[
-            offset + i * 0x30: offset + (i + 1) * 0x30]))
+        fileList.append(FileEntryT(data[
+            offset + i * FileEntryT.entrySize(): offset + (i + 1) * FileEntryT.entrySize()]))
     scanDummyEntry(fileList)
     return fileList
+
+
+def getTdbFileList(fsHeader, dataRegion, fat):
+    return getFileList(fsHeader, None, dataRegion, fat, TdbFileEntry)
 
 
 def verifyHashTable(hashTable, entryList):

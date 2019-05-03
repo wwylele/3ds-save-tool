@@ -93,30 +93,45 @@ For more advanced usage, see the output by running the scripts without arguments
  ```
  ./diff-extract.py \
      "nand/dbs/ticket.db" \
-     "output/tickets"
+     "output/ticket"
  ```
- This extracts the ticket database file from NAND to folder `output/tickets`.
+ This extracts the ticket database file from NAND to folder `output/ticket`.
 
 ----
 
  ```
  ./diff-extract.py \
      "sdmc/gm9out/title.db" \
-     "output/titles"
+     "output/title"
  ```
- This extracts the title database file that has been decrypted using GodMode9 (or any other tools) from SD to folder `output/titles`.
+ This extracts the title database file that has been decrypted using GodMode9 (or any other tools) from SD to folder `output/title`.
 
 ----
  ```
  ./diff-extract.py \
      "sdmc/Nintendo 3DS/0123456789abcdef0123456789abcdef/fedcba9876543210fedcba9876543210/dbs/title.db" \
-     "output/tickets" \
+     "output/title" \
      -titledb \
      -decrypt \
      -id 2
  ```
- This extracts the encrypted title database file from SD to folder `output/tickets`. Some requirement and notes of this command:
+ This extracts the encrypted title database file from SD to folder `output/title`. Some requirement and notes of this command:
   - You need to create `secrets.py` from `secrets.py.template` and fill in the keys.
   - The parameter `-id X` is title database ID: 2 for title.db and 3 for import.db.
   - An additional library `Cryptodome` is needed.
   - If the script outputs "Error: CMAC mismatch.", it means that some of the keys or the ID is incorrect.
+
+### Extracting Tickets
+ ```
+ ./ticket-extract.py \
+     "output/ticket" \
+     "output/tickets"
+ ```
+ This extracts all ticket subfiles from file `output/ticket` to `output/tickets`. The input file of this command is *this output file of the `./diff-extract.py` command* shown above.
+
+ A bash file that pipes the two commands is also provided. It takes *the original `ticket.db` file* as input.
+ ```
+ ./ticket-fast.sh \
+     "nand/dbs/ticket.db" \
+     "output/tickets"
+ ```
