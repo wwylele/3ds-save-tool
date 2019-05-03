@@ -26,16 +26,24 @@ def main():
     if outputPath is None:
         print("No output directory given. Will only do data checking.")
 
-    tick = open(inputPath, 'rb')
-    TICK, a, b, c = struct.unpack('<IIII', tick.read(0x10))
-    if TICK != 0x4B434954:
-        print("Error: Not a TICK format")
+    file = open(inputPath, 'rb')
+    magic, magic2, b, c = struct.unpack('<IIII', file.read(0x10))
+    if magic == 0x4B434954:
+        print("Info: magic = TICK")
+    elif magic == 0x444E414E:
+        print("Info: magic = NAND")
+        file.read(0x70)
+    elif magic == 0x504D4554:
+        print("Info: magic = TEMP")
+        file.read(0x70)
+    else:
+        print("Error: unknown magic")
         exit(1)
 
-    print("Info: Pre Header 0x%08X 0x%08X 0x%08X" % (a, b, c))
+    print("Info: Pre Header 0x%08X 0x%08X 0x%08X" % (magic2, b, c))
 
-    dbri = tick.read()
-    tick.close()
+    dbri = file.read()
+    file.close()
 
     BDRI, ver, filesystemHeaderOff, imageSize, imageBlockSize, x00 \
         = struct.unpack('<IIQQII', dbri[0:0x20])

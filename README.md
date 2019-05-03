@@ -121,9 +121,9 @@ For more advanced usage, see the output by running the scripts without arguments
   - An additional library `Cryptodome` is needed.
   - If the script outputs "Error: CMAC mismatch.", it means that some of the keys or the ID is incorrect.
 
-### Extracting Tickets
+### Extracting Title databse (`*.db` files, except for `certs.db`)
  ```
- ./ticket-extract.py \
+ ./db-extract.py \
      "output/ticket" \
      "output/tickets"
  ```
@@ -131,7 +131,7 @@ For more advanced usage, see the output by running the scripts without arguments
 
  A bash file that pipes the two commands is also provided. It takes *the original `ticket.db` file* as input.
  ```
- ./ticket-fast.sh \
+ ./db-fast.sh \
      "nand/dbs/ticket.db" \
      "output/tickets"
  ```
