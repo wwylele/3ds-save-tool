@@ -74,7 +74,7 @@ For more advanced usage, see the output by running the scripts without arguments
 
  ```
  ./diff-extract.py \
-     "sdmc/Nintendo 3DS/0123456789abcdef0123456789abcdef/fedcba9876543210fedcba9876543210/00000000/00001554" \
+     "sdmc/Nintendo 3DS/0123456789abcdef0123456789abcdef/fedcba9876543210fedcba9876543210/extdata/00000000/00001554" \
      "output/mhx-save" \
      -decrypt \
      -id 00001554
