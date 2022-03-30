@@ -8,8 +8,8 @@ This repo also contains some old documentations of the save data format. They we
 ## Requirements
 
 - Python 3
-- [Cryptodome](pycryptodome.readthedocs.io). You can install it using either [`pip install pycryptodome`](https://pypi.org/project/pycryptodome/) (install as "Crypto" package) or [`pip install pycryptodomex`](https://pypi.org/project/pycryptodomex/) (install "Cryptodome" package)
-  - The old [Crypto](https://pypi.org/project/pycrypto/) package is not supported.
+- [PyCryptodome](https://pycryptodome.readthedocs.io). You can install it using either [`pip install pycryptodome`](https://pypi.org/project/pycryptodome/) (install as "Crypto" package) or [`pip install pycryptodomex`](https://pypi.org/project/pycryptodomex/) (install "Cryptodome" package)
+  - The old [PyCrypto](https://pypi.org/project/pycrypto/) package is not supported.
 
 
 ## Usage
