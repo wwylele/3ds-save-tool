@@ -3,11 +3,11 @@ import struct
 import io
 
 try:
-    from Crypto.Cipher import AES
-    from Crypto.Util import Counter
-except:
+    from Cryptodome.Hash import CMAC
     from Cryptodome.Cipher import AES
-    from Cryptodome.Util import Counter
+except:
+    from Crypto.Hash import CMAC
+    from Crypto.Cipher import AES
 
 
 def DecryptSdFile(file, filePath, key):
