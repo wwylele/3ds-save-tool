@@ -5,8 +5,12 @@ These are tools parsing save (DISA file) and extdata (DIFF file) and extracting 
 
 This repo also contains some old documentations of the save data format. They were migrated to 3dbrew and the version here is outdated and unmaintained. Please refer to the pages on 3dbrew instead.
 
+## Requirements
 
-Required: python 3
+- Python 3
+- [Cryptodome](pycryptodome.readthedocs.io). You can install it using either [`pip install pycryptodome`](https://pypi.org/project/pycryptodome/) (install as "Crypto" package) or [`pip install pycryptodomex`](https://pypi.org/project/pycryptodomex/) (install "Cryptodome" package)
+  - The old [Crypto](https://pypi.org/project/pycrypto/) package is not supported.
+
 
 ## Usage
 
@@ -45,7 +49,6 @@ For more advanced usage, see the output by running the scripts without arguments
  This extracts encrypted save data of Pokemon Sun from SD card to folder `output/pokemon-sun-save`. Some requirement and notes of this command:
   - You need to create `secrets.py` from `secrets.py.template` and fill in the keys.
   - The parameter `-id XXXXXXXXXXXXXXXX` is the game title ID in 16-digit hex and must match the game.
-  - An additional library `Cryptodome` is needed.
   - If the script outputs "Error: CMAC mismatch.", it means that some of the keys or the title ID is incorrect.
 
  ----
@@ -82,7 +85,6 @@ For more advanced usage, see the output by running the scripts without arguments
  This extracts encrypted game extdata of Monster Hunter X from SD card to folder `output/mhx-save`. Some requirement and notes of this command:
   - You need to create `secrets.py` from `secrets.py.template` and fill in the keys.
   - The parameter `-id XXXXXXXX` is the extdata ID in 8-digit hex and must match the game. It is usually similar to the game title ID.
-  - An additional library `Cryptodome` is needed.
   - If the script outputs "Error: CMAC mismatch.", it means that some of the keys or the extdata ID is incorrect.
 
 ----
@@ -118,7 +120,6 @@ For more advanced usage, see the output by running the scripts without arguments
  This extracts the encrypted title database file from SD to folder `output/title`. Some requirement and notes of this command:
   - You need to create `secrets.py` from `secrets.py.template` and fill in the keys.
   - The parameter `-id X` is title database ID: 2 for title.db and 3 for import.db.
-  - An additional library `Cryptodome` is needed.
   - If the script outputs "Error: CMAC mismatch.", it means that some of the keys or the ID is incorrect.
 
 ### Extracting Title databse (`*.db` files, except for `certs.db`)
