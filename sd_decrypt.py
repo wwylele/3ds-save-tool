@@ -5,9 +5,11 @@ import io
 try:
     from Cryptodome.Hash import CMAC
     from Cryptodome.Cipher import AES
+    from Cryptodome.Util import Counter
 except:
     from Crypto.Hash import CMAC
     from Crypto.Cipher import AES
+    from Crypto.Util import Counter
 
 
 def DecryptSdFile(file, filePath, key):
