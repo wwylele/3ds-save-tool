@@ -12,7 +12,8 @@ import key_engine
 
 try:
     from secrets import Secrets
-except:
+except Exception as e:
+    print(f"Warning: error with secrets.py. CMAC verification is disabled. ({e})")
     class Secrets(object):
         pass
 
